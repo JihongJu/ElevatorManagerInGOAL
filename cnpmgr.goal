@@ -9,7 +9,13 @@ init module{
 
 main module{
 	program {
-		% receive message from "elevator"
-		if bel( received(elevator, atFloor(Level)) ) then insert(people(3)) + (elevator).sendonce((people(3))).
+
+	}
+}
+
+event module {
+	program {
+		% respond if received a message from other agents
+		forall bel( received(Sender, atFloor(Level))) do (Sender).sendonce((agent(Sender))) .
 	}
 }

@@ -36,14 +36,15 @@ main module {
 		    not(a-goal( atFloor(OtherLevel),
 				OtherDistance is abs(OtherLevel-Here), OtherDistance<Distance) )
 		then goto(Level, Dir).
-		% receive message from "manager"
-		if bel( received(manager, people(3)) ) then insert(people(3)).
 	}
 }
 	
 event module {
 	program {
 		%%%%% Percept Processing %%%%%
+		
+		% receive message from "manager"
+		if bel( received(manager, people(3)) ) then insert(people(3)).
 		
 		% Send a message to manager
 		forall bel( agent(manager), not(me(manager)), percept(atFloor(Level)), not(atFloor(Level)) ) do (manager).sendonce(atFloor(Level)).

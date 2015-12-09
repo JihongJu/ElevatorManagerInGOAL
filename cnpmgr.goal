@@ -9,6 +9,7 @@ init module{
 
 main module{
 	program {
-		if bel( received(elevator, atFloor(Level)) ) then insert(people(3)). 
+		% receive message from "elevator"
+		if bel( received(elevator, atFloor(Level)) ) then insert(people(3)) + (elevator).sendonce((people(3))).
 	}
 }

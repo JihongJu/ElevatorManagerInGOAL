@@ -1,0 +1,15 @@
+init module{
+	knowledge{
+	}
+	beliefs{
+		people(3).
+	}
+	goals{
+	}
+}
+
+main module{
+	program {
+		if bel( received(elevator, atFloor(Level)) ) then adopt(people(3)). 
+	}
+}

@@ -44,7 +44,7 @@ event module {
 		%%%%% Percept Processing %%%%%
 		
 		% Send a message to manager
-		forall bel( agent(file2), not(me(file2)), percept(atFloor(Level)), not(atFloor(Level)) ) do file2.sendonce(atFloor(Level)).
+		forall bel( agent(manager), not(me(manager)), percept(atFloor(Level)), not(atFloor(Level)) ) do (manager).sendonce(atFloor(Level)).
 		
 		% The atFloor(Level) percept is received only when elevator has stopped at a floor Level.
 		forall bel( percept(atFloor(Level)), not(atFloor(Level)) ) do insert( atFloor(Level) ).

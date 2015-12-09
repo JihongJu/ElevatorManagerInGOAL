@@ -2,7 +2,6 @@ init module{
 	knowledge{
 	}
 	beliefs{
-		people(3).
 	}
 	goals{
 	}
@@ -10,6 +9,6 @@ init module{
 
 main module{
 	program {
-		if bel( received(elevator, atFloor(Level)) ) then adopt(people(3)). 
+		if bel( received(elevator, atFloor(Level)) ) then insert(people(3)). 
 	}
 }

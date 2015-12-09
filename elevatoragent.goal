@@ -43,10 +43,13 @@ main module {
 	
 event module {
 	program {
-		%%%%% Percept Processing %%%%%
+		%%%%% Messaging System %%%%%
 		
 		% Send a message to manager
 		forall bel( agent(manager), not(me(manager)), percept(atFloor(Level)), not(atFloor(Level)) ) do (manager).sendonce(atFloor(Level)).
+		
+		%%%%% Percept Processing %%%%%
+		
 		
 		% The atFloor(Level) percept is received only when elevator has stopped at a floor Level.
 		forall bel( percept(atFloor(Level)), not(atFloor(Level)) ) do insert( atFloor(Level) ).

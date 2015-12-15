@@ -60,7 +60,9 @@ event module {
 		forall bel( agent(manager), not(me(manager)), percept(dir(Dir)), not(dir(Dir)) ) do (manager).sendonce(dir(Dir)).
 		forall bel( agent(manager), not(me(manager)), dir(Dir), not(percept(dir(Dir))) ) do (manager).sendonce(not(dir(Dir))).
 		
-		% //TODO doorstate
+		% Send doorState to manager when it changes
+		forall bel( percept(doorState(New)), doorState(Old) ) do (manager).sendonce( not(doorState(Old)), doorState(New) ).
+		
 		
 		% GOALs
 		

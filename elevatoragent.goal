@@ -4,6 +4,7 @@ init module {
 		% Note that onRoute only succeeds when the elevator car is "docked", i.e. atFloor(Here) succeeds for
 		% some floor (see also the belief section).
 		onRoute(Level, Dir) :- atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
+
 	}
 	beliefs{
 		% The direction that will be shown to the people at the next stop.
@@ -41,16 +42,34 @@ main module {
 	
 event module {
 	program {
-		%%%%% Messaging System %%%%%
-		
+		%%%%% Communication Processing %%%%%
 		% receive message from "manager"
 		if bel( received(manager, people(3)) ) then insert(people(3)).
 		
-		% Send a message to manager
+		% Percepts
+		
+		% Send "I am at floor Level" or "I am NOT at floor level" to manager when percepts atFloor(Level) changes
 		forall bel( agent(manager), not(me(manager)), percept(atFloor(Level)), not(atFloor(Level)) ) do (manager).sendonce(atFloor(Level)).
+		forall bel( agent(manager), not(me(manager)), atFloor(Level), not(percept(atFloor(Level))) ) do (manager).sendonce(not(atFloor(Level))).
+		
+		% Send "Level floor's Dir button is on" or "Level floor's Dir button is NOT on" to manager when percepts fButtonOn(Level,Dir) changes
+		forall bel(agent(manager), not(me(manager)), percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) ) do (manager).sendonce(fButtonOn(Level,Dir)).
+		forall bel(agent(manager), not(me(manager)), fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) ) do (manager).sendonce(not(fButtonOn(Level,Dir))).
+		 
+		% Send "I am going Dir direction" or "I am NOT going Dir direction" to manager when dir(Dir) changes
+		forall bel( agent(manager), not(me(manager)), percept(dir(Dir)), not(dir(Dir)) ) do (manager).sendonce(dir(Dir)).
+		forall bel( agent(manager), not(me(manager)), dir(Dir), not(percept(dir(Dir))) ) do (manager).sendonce(not(dir(Dir))).
+		
+		% //TODO doorstate
+		
+		% GOALs
+		
+		% //TODO eButtonOn dir
+		% //TODO fButtonOn onRoute 
+		
 		
 		%%%%% Percept Processing %%%%%
-		
+
 		
 		% The atFloor(Level) percept is received only when elevator has stopped at a floor Level.
 		forall bel( percept(atFloor(Level)), not(atFloor(Level)) ) do insert( atFloor(Level) ).

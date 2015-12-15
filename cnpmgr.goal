@@ -1,5 +1,6 @@
 init module{
 	knowledge{
+		
 	}
 	beliefs{
 	}
@@ -9,20 +10,25 @@ init module{
 
 main module{
 	program {
-<<<<<<< HEAD
-		% receive message from "elevator"
-		if bel( received(A, atFloor(Level)) ) then insert(people(3)) + (elevator).sendonce((people(3))).
-		if bel( received(A, atFloor(Level)) ) then insert(people(3)) + (elevator_0).sendonce((people(3))).
-		if bel( received(A, atFloor(Level)) ) then insert(people(3)) + (elevator_1).sendonce((people(3))).
-=======
 
->>>>>>> origin/jihong
 	}
 }
 
 event module {
 	program {
-		% respond if received a message from other agents
-		forall bel( received(Sender, atFloor(Level))) do (Sender).sendonce((agent(Sender))) .
+		% update beliefs of the manager by communicating with elevator agents
+		% insert "Sender is at floor Lever" whenever received from Sender at floor Level and delete whenever
+		% received from Sendor not at floor Level
+		% agtAtFloor True if agent Agt is at floor Level.
+		forall bel( received(Sender, atFloor(Level)), not(agtAtFloor(Sender, Level))) do insert(agtAtFloor(Sender, Level)).
+		forall bel( agtAtFloor(Sender, Level), received(Sender, not(atFloor(Level)))) do delete(agtAtFloor(Sender, Level)).
+		
+		% insert or delete "Level Floor's Dir button is on" when received from elevator agents.
+		forall bel( received(Sender, fButtonOn(Level,Dir))) do insert(fButtonOn(Level,Dir)).
+		forall bel( received(Sender, not(fButtonOn(Level,Dir)))) do delete(fButtonOn(Level,Dir)).
+		
+		% insert or delte "Sender is going direction Dir" when received from elevators
+		forall bel( received(Sender, dir(Dir))) do insert(agtDir(Sender,Dir)).
+		forall bel( received(Sender, not(dir(Dir)))) do delete(agtDir(Sender,Dir)). 
 	}
 }

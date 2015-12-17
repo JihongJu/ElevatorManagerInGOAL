@@ -5,7 +5,7 @@ init module {
 		% some floor (see also the belief section).
 		onRoute(Level, Dir) :- fButtonOn(Level,Dir), atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
 		% Utility assignment
-		bid(Level, Dir, Util) :- aim(Level,Dir), Util = 10.
+		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10,Util).
 
 	}
 	beliefs{
@@ -13,7 +13,7 @@ init module {
 		% This remains the intended direction of movement until there are no more
 		% planned stops in that direction.
 		atFloor(1).
-		dir(up).
+		dir(down).
 		% Initially, it is unknown whether doors are open or closed.
 		doorState(unknown).
 	}
@@ -71,7 +71,7 @@ event module {
 		
 		%%%%%%%%%%%%%%%% Aim Management
 		
-		% //TODO fButtonOn onRoute 
+		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
 		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( aim(Level, Dir) ).
 
@@ -102,8 +102,8 @@ event module {
 		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) ) do delete( fButtonOn(Level,Dir) ).
 		
 		% The eButtonOn(Level) percept indicate the level button in the elevator has been pressed		
-%		forall bel( percept(eButtonOn(Level)), not(eButtonOn(Level)) ) do insert( eButtonOn(Level) ).
-%		forall bel( eButtonOn(Level), not(percept(eButtonOn(Level))) ) do delete( eButtonOn(Level) ).
+		forall bel( percept(eButtonOn(Level)), not(eButtonOn(Level)) ) do insert( eButtonOn(Level) ).
+		forall bel( eButtonOn(Level), not(percept(eButtonOn(Level))) ) do delete( eButtonOn(Level) ).
 		
 		% The doorState percept is received only if the door state has changed.
 		% So we do not need to check whether the New value is different from the Old value to avoid unnecessary updates.

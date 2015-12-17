@@ -6,8 +6,7 @@ init module{
 		existHigherThan(X, Level,Dir,UtilX) :- higherThan(_,X,Level,Dir).
 		% there does not exist a bid higher than the highest bid
 		highest_bid(X, Level,Dir,UtilX) :- bid(X, Level, Dir, UtilX), not(existHigherThan(X, Level, Dir, UtilX)).
-		% redundant bid
-		
+
 		
 		%%%%%%%%%%% don't work properly
 		% new an auction if there is does not exist
@@ -93,7 +92,7 @@ event module {
 			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  ).			
 
 		% assign task to the agent who bid highest
-		if bel( highest_bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)))
+		if bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)))
 			then (Receiver).send( aim(Level, Dir) )
 				+ delete( highest_bid(Receiver, Level, Dir, Util) )
 				+ delete( bid(Receiver, Level, Dir, Util) ).

@@ -1,0 +1,76 @@
+init module{
+	knowledge{
+		% agent A has bid higher than agent B
+		higherThan(A, B, Level, Dir) :- bid(A, Level, Dir, UtilA), bid(B, Level, Dir, UtilB), UtilA>UtilB, agent(A), agent(B).
+		highest_bid(X, Level, Dir) :- higherThan(_, X, Level, Dir).
+		
+	}
+	beliefs{
+		atFloor(1).
+		dir(up).
+		
+	}
+	goals{
+				
+	}
+}
+
+main module{
+	program {
+
+	}
+}
+
+event module {
+	program {
+		%%%%% Communicating Processing %%%%%
+		
+		% update beliefs from elevator agents' percepts
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%% not used by now
+		% insert "Sender is at floor Lever" whenever received from Sender at floor Level and delete whenever
+		% received from Sendor not at floor Level
+		% agtAtFloor True if agent Agt is at floor Level.
+		forall bel( received(Sender, atFloor(Level)), not(agtAtFloor(Sender, Level)) ) 
+			do insert( agtAtFloor(Sender, Level) )
+			+ delete( received(Sender, atFloor(Level)) ).	% delete received messages //TODO probably don't need
+			
+			
+		forall bel( agtAtFloor(Sender, Level), received(Sender, not(atFloor(Level))) )
+			do delete( agtAtFloor(Sender, Level) )
+			+ delete( received(Sender, not(atFloor(Level))) ).	% delete received messages //TODO probably don't need
+		
+		% insert or delete "Level Floor's Dir button is on" when received from elevator agents.
+		forall bel( received(Sender, fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
+			do insert( fButtonOn(Level,Dir) )
+			+ delete( received(Sender, fButtonOn(Level,Dir)) ).	% delete received messages //TODO probably don't need
+			
+		forall bel( fButtonOn(Level,Dir), received(Sender, not(fButtonOn(Level,Dir))) )
+			do delete( fButtonOn(Level,Dir) )
+			+ delete( received(Sender, not(fButtonOn(Level,Dir))) ).	% delete received messages //TODO probably don't need
+		
+		% update "Sender's doorState" from Old to New
+		forall bel( received(Sender, not(doorState(Old), doorState(New))) ) 
+				do insert( not(elevDoorState(Sender,Old)), elevDoorState(Sender, New) )
+				+ delete( received(Sender, not(doorState(Old), doorState(New))) ).	% delete received messages //TODO probably don't need
+		
+		% insert or delte "Sender is going direction Dir" when received from elevators
+		forall bel( received(Sender, dir(Dir)), not(agtDir(Sender, Dir)) )
+			do insert( agtDir(Sender,Dir) )
+			+ delete(received(Sender, dir(Dir))).	% delete received messages //TODO probably don't need
+		forall bel( agtDir(Sender, Dir), received(Sender, not(dir(Dir))) )
+			do delete( agtDir(Sender,Dir) )
+			+ delete( received(Sender, not(dir(Dir))) ). 	% delete received messages //TODO probably don't need
+			
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Aim Management
+		forall bel( received(Sender, bid(Level, Dir, Util)) )
+			do delete( received(Sender, bid(Level, Dir, Util)) )
+			+ insert( bid(Sender, Level, Dir, Util) ).
+			
+		% send
+		forall bel( bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)) )
+			do (Receiver).send( aim(Level, Dir) )
+			+ delete( bid(Receiver, Level, Dir, Util) ).
+		
+		
+	}
+}

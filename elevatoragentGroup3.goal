@@ -1,0 +1,131 @@
+init module {
+	knowledge{
+		% onRoute succeeds when Level is in the current direction Dir relative to the floor the agent is at.
+		% Note that onRoute only succeeds when the elevator car is "docked", i.e. atFloor(Here) succeeds for
+		% some floor (see also the belief section).
+		onRoute(Level, Dir) :- fButtonOn(Level,Dir), atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
+		% Utility assignment
+		bid(Level, Dir, Util) :- aim(Level,Dir), (Util=10).
+
+	}
+	beliefs{
+		% The direction that will be shown to the people at the next stop.
+		% This remains the intended direction of movement until there are no more
+		% planned stops in that direction.
+		atFloor(1).
+		dir(up).
+		% Initially, it is unknown whether doors are open or closed.
+		doorState(unknown).
+	}
+	goals{
+		% atFloor(1), dir(up).
+	}
+	actionspec{
+		% The action goto(Level, Dir) moves the elevator car to floor Level. It can
+		% only be performed if the elevator car is docked and not moving, i.e.,
+		% atFloor(Here) holds for some Here.
+		% When the elevator arrives at the requested floor, the Dir light will turn on.
+		goto(Level, Dir) {
+		   pre{ atFloor(Here), dir(DirNow), doorState(closed) }
+		   post{ not(dir(DirNow)), dir(Dir) }
+		}
+	}
+}
+	
+main module {
+	program {
+		% Goto the nearest floor that the agent wants to go to.
+		if a-goal( atFloor(Level), dir(Dir) ),
+			bel( atFloor(Here), Distance is abs(Level-Here) ),
+		    not(a-goal( atFloor(OtherLevel),
+				OtherDistance is abs(OtherLevel-Here), OtherDistance<Distance) )
+		then goto(Level, Dir).
+	}
+}
+	
+event module {
+	program {
+		%%%%% Communication Processing %%%%%
+		
+		% Percepts
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%% Not used by now
+		% Send "I am at floor Level" or "I am NOT at floor level" to manager when percepts atFloor(Level) changes
+		%forall bel( agent(manager), not(me(manager)), percept(atFloor(Level)), not(atFloor(Level)) )
+		%	do (manager).sendonce(atFloor(Level)).
+		%forall bel( agent(manager), not(me(manager)), atFloor(Level), not(percept(atFloor(Level))) )
+		%	do (manager).sendonce(not(atFloor(Level))).
+		
+		% Send "Level floor's Dir button is on" or "Level floor's Dir button is NOT on" to manager when percepts fButtonOn(Level,Dir) changes
+		%forall bel(agent(manager), me(elevator), percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
+		%	do (manager).sendonce(fButtonOn(Level,Dir)).
+		%forall bel(agent(manager), me(elevator), fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) )
+		%	do (manager).sendonce(not(fButtonOn(Level,Dir))).
+		
+		% Send doorState to manager when it changes
+		%forall bel( percept(doorState(New)), doorState(Old) ) do (manager).sendonce( not(doorState(Old)), doorState(New) ).
+		
+		% Send "I am going Dir direction" or "I am NOT going Dir direction" to manager when dir(Dir) changes
+		%forall bel( agent(manager), not(me(manager)), percept(dir(Dir)), not(dir(Dir)) ) do (manager).sendonce(dir(Dir)).
+		%forall bel( agent(manager), not(me(manager)), dir(Dir), not(percept(dir(Dir))) ) do (manager).sendonce(not(dir(Dir))).
+		
+		
+		% Goal Management
+		
+		% //TODO fButtonOn onRoute 
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) )
+			do insert( aim(Level, Dir) ).
+		% //TODO eButtonOn dir
+		%forall bel( percept(eButtonOn(Level)), not(eButtonOn(Level)) ) do insert( eButtonOn(Level) ).
+		%forall bel( eButtonOn(Level), not(percept(eButtonOn(Level))) ) do delete( eButtonOn(Level) ).
+		%forall bel( eButtonOn(Level), dir(Dir) ) do insert( aim(Level, Dir) ).
+		% //TODO arbitary service
+		%if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
+		%	then insert( goal(L, D) ).
+		
+		% Bid Sending
+		forall bel( bid(Level, Dir, Util), agent(manager), not(me(manager))  )
+			do (manager).send( bid(Level, Dir, Util) )
+			+ delete( aim(Level, Dir) )
+			+ delete( bid(Level, Dir, Util) ).
+		
+		forall bel( received(manager, aim(Level, Dir)) )
+			do delete( received(manager, aim(Level, Dir)) )
+			+ adopt( atFloor(Level), dir(Dir) ).
+		
+		
+		%%%%% Percept Processing %%%%%
+
+		
+		% The atFloor(Level) percept is received only when elevator has stopped at a floor Level.
+		forall bel( percept(atFloor(Level)), not(atFloor(Level)) ) do insert( atFloor(Level) ).
+		forall bel( atFloor(Level), not(percept(atFloor(Level))) ) do delete( atFloor(Level) ).
+				
+		% The fButton(Level,Dir) percept indicates that the up or down (Dir) button on floor Level has been pressed.
+		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) ) do insert( fButtonOn(Level,Dir) ).
+		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) ) do delete( fButtonOn(Level,Dir) ).
+		
+		% The doorState percept is received only if the door state has changed.
+		% So we do not need to check whether the New value is different from the Old value to avoid unnecessary updates.
+		forall bel( percept(doorState(New)), doorState(Old) ) do insert( not(doorState(Old)), doorState(New) ).
+		
+
+
+		%%%%% Goal Management %%%%%
+
+		% The elevator agent changes its plans only while it is docked, i.e., at a floor
+		% and not moving.
+		
+		% Adopt new stops that are on this agent's route.
+		%forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) ) do adopt( atFloor(Level), dir(Dir) ).
+				
+		% The eButton(Level) percept is received when the elevator button on floor Level has been pressed.
+		% In that case, the agent will adopt a goal to service that floor. It is ASSUMED that a button for a floor is
+		% pressed that is "on route", i.e. in the direction the elevator is currently travelling.
+		forall bel( percept(eButtonOn(Level)), dir(Dir) ) do adopt( atFloor(Level), dir(Dir) ).
+
+		% If there are no current goals to pursue, then adopt a goal to service an arbitrary floor for
+		% which a floor button has been pressed that is not already being serviced.
+		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
+			then adopt( atFloor(L), dir(D) ).
+	}
+}

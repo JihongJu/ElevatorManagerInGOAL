@@ -3,7 +3,7 @@ environment {
  init = [
 	Simulation = "Random Rider Insertion", 
 	Floors = 10, Cars = 3,
-	RandomSeed=635359, Capacity=8, People=20, 
+	RandomSeed=6353, Capacity=8, People=20, 
 	InsertionTime=50000, 
 	TimeFactor = 0, Controller = "EIS Controller",
 	InsertionTimeHr = 0.3, StandardDev = 1,

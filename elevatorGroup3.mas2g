@@ -12,8 +12,8 @@ environment {
 }
 
 agentfiles {
-	"elevatoragent.goal" [name=file1] .
-	"cnpmgr.goal" [name=file2] .
+	"elevatoragentGroup3.goal" [name=file1] .
+	"cnpmgrGroup3.goal" [name=file2] .
 }
 
 launchpolicy {

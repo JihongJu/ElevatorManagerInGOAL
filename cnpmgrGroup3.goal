@@ -1,8 +1,14 @@
 init module{
 	knowledge{
 		% agent A has bid higher than agent B
-		higherThan(A, B, Level, Dir) :- bid(A, Level, Dir, UtilA), bid(B, Level, Dir, UtilB), UtilA>UtilB, agent(A), agent(B).
-		highest_bid(X, Level, Dir) :- higherThan(_, X, Level, Dir).
+		
+		higherThan(X, Y, Level, Dir) :- bid(X, Level, Dir, UtilX), bid(Y, Level, Dir, UtilY), UtilX>UtilY, agent(X), agent(Y).
+		
+		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([E], Level, Dir)).
+		
+		auction([X|E], Level, Dir) :- auction([E], Level, Dir), bid(X,Level,Dir,UtilX).
+		
+		highest_bid(X, Level, Dir) :- auction([E],Level,Dir).
 		
 	}
 	beliefs{

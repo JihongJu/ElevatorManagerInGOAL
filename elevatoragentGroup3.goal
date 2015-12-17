@@ -5,7 +5,7 @@ init module {
 		% some floor (see also the belief section).
 		onRoute(Level, Dir) :- fButtonOn(Level,Dir), atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
 		% Utility assignment
-		bid(Level, Dir, Util) :- aim(Level,Dir), (Util=10).
+		bid(Level, Dir, Util) :- aim(Level,Dir), Util = 10.
 
 	}
 	beliefs{

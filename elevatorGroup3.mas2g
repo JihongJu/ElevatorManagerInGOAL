@@ -5,7 +5,7 @@ environment {
 	Floors = 10, Cars = 3,
 	RandomSeed=635359, Capacity=8, People=20, 
 	InsertionTime=50000, 
-	TimeFactor = 2, Controller = "EIS Controller",
+	TimeFactor = 1, Controller = "EIS Controller",
 	InsertionTimeHr = 0.3, StandardDev = 1,
 	NPeoplePerFloor=8, Insert2ndReqAt = 29000
  ].

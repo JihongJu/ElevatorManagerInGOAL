@@ -92,10 +92,11 @@ event module {
 					
 
 		% assign task to the agent who bid highest
-		forall bel( bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)) )
+		forall bel( highest_bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)), agent(OtherAgent), OtherAgent \= Receiver )
 			do (Receiver).send( aim(Level, Dir) )
-%				+ delete( highest_bid(Receiver, Level, Dir, Util) )
-				+ delete( bid(Receiver, Level, Dir, Util) ).
+				+ delete( highest_bid(Receiver, Level, Dir, Util) )
+				+ delete( bid(Receiver, Level, Dir, Util) )
+				+ delete( bid(OtherAgent, Level, Dir, Util) ).
 				
 		% delete redundunt bids
 			

@@ -76,8 +76,8 @@ event module {
 			do insert( aim(Level, Dir) ).
 
 		% //TODO arbitary service
-		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
-			then insert( aim(L, D) ).
+%		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
+%			then insert( aim(L, D) ).
 		
 		%%%%%%%%%%%%%%%% Bid Sending
 		forall bel( bid(Level, Dir, Util), agent(manager), not(me(manager))  )
@@ -126,7 +126,7 @@ event module {
 
 		% If there are no current goals to pursue, then adopt a goal to service an arbitrary floor for
 		% which a floor button has been pressed that is not already being serviced.
-%		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
-%			then adopt( atFloor(L), dir(D) ).
+		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
+			then adopt( atFloor(L), dir(D) ).
 	}
 }

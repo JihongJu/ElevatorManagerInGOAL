@@ -88,14 +88,17 @@ event module {
 			+ insert( bid(Sender, Level, Dir, Util) ).
 		
 		% delete redundant bids
-		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), AnyAgt \= Receiver)
-			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  ).			
+		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), AnyUtil \= Util)
+			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  ).
+			
 
 		% assign task to the agent who bid highest
-		if bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)))
-			then (Receiver).send( aim(Level, Dir) )
+		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)))
+			do (Receiver).sendonce( aim(Level, Dir) )
 				+ delete( highest_bid(Receiver, Level, Dir, Util) )
 				+ delete( bid(Receiver, Level, Dir, Util) ).
+		
+
 				
 
 %		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), AnyAgt \= Receiver, 

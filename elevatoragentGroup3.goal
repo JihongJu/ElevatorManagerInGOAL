@@ -5,7 +5,7 @@ init module {
 		% some floor (see also the belief section).
 		onRoute(Level, Dir) :- fButtonOn(Level,Dir), atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
 		% Utility assignment
-		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10,Util).
+		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
 
 	}
 	beliefs{
@@ -81,7 +81,7 @@ event module {
 		
 		%%%%%%%%%%%%%%%% Bid Sending
 		forall bel( bid(Level, Dir, Util), agent(manager), not(me(manager))  )
-			do (manager).send( bid(Level, Dir, Util) )
+			do (manager).sendonce( bid(Level, Dir, Util) )
 			+ delete( aim(Level, Dir) )
 			+ delete( bid(Level, Dir, Util) ).
 		%%%%%%%%%%%%%%%% Goal receaving

@@ -72,7 +72,7 @@ event module {
 		%%%%%%%%%%%%%%%% Aim Management
 		
 		% //TODO fButtonOn onRoute 
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) ) % , not(goal( atFloor(Level),dir(Dir) ))
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( aim(Level, Dir) ).
 
 		% //TODO arbitary service

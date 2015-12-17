@@ -1,26 +1,37 @@
 init module{
 	knowledge{
-		% agent A has bid higher than agent B
+		% agent X bids higher than agent Y
+		higherThan(X, Y, Level, Dir) :- bid(X, Level, Dir, UtilX), bid(Y, Level, Dir, UtilY), X\=Y, UtilX>=UtilY, agent(X), agent(Y).
+		% exist a bid higher than bid (X, Level,Dir,UtilX))
+		existHigherThan(X, Level,Dir,UtilX) :- higherThan(_,X,Level,Dir).
+		% there does not exist a bid higher than the highest bid
+		highest_bid(X, Level,Dir,UtilX) :- bid(X, Level, Dir, UtilX), not(existHigherThan(X, Level, Dir, UtilX)).
+		% auction
+		auction([X], Level, Dir) :- bid(X,Level,Dir,Util), not(auction([_], Level, Dir)).
+		auction([X|T], Level, Dir) :- bid(X,Level,Dir,Util), auction([T], Level, Dir).
 		
-		higherThan(X, Y, Level, Dir) :- bid(X, Level, Dir, UtilX), bid(Y, Level, Dir, UtilY), UtilX>=UtilY, agent(X), agent(Y).
 		
-		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_], Level, Dir)).
-		
-		
-		auction([H|T], Level, Dir) :- auction([T], Level, Dir), bid(T,Level,Dir,UtilT), bid(H,Level,Dir,UtilH), higherThan(H,T,Level,Dir).
-		% auction([H|T], Level, Dir) :- auction([H], Level, Dir), bid(H,Level,Dir,UtilH), bid(T,Level,Dir,UtilT), higherThan(H,T,Level,Dir).
-		
-		auction([X,Y|T], Level, Dir) :- auction([Y|T], Level, Dir), bid(Y, Level, Dir, UtilY), bid(X,Level,Dir,UtilX), higherThan(X,Y,Level,Dir).
-		% auction([Y,X|T], Level, Dir) :- auction([Y|T], Level, Dir), bid(Y, Level, Dir, UtilY), bid(X,Level,Dir,UtilX), higherThan(Y,X,Level,Dir).
-		
-		highest_bid(X,Level,Dir,UtilX) :- auction([X],Level,Dir), bid(X,Level,Dir,UtilX).
-		highest_bid(X, Level, Dir, UtilX) :- auction([X|_],Level,Dir), bid(X,Level,Dir,UtilX).
+		%%%%%%%%%%% don't work properly
+		% new an auction if there is does not exist
+%		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_|_], Level, Dir)).
+%		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_|_], Level, Dir)).
+		% add a bid to an exist auction
+		% If there is already one bid in the auction, put the higher bid in front of the lower one
+%		auction([X,Y], Level, Dir) :- auction([Y], Level, Dir), not(X=Y), higherThan(X,Y,Level,Dir). 	% do not need bid(Y,Level,Dir,UtilY),
+%		auction([Y,X], Level, Dir) :- auction([Y], Level, Dir), not(X=Y), higherThan(Y,X,Level,Dir). 	% bid(X,Level,Dir,UtilX) here
+		% If there are more than one bids, compare the new bid and the head of the old list (which is the highest) 
+		% and make the higher one as the new head
+%		auction([X,H|T], Level, Dir) :- auction([H|T], Level, Dir), not(member(X,[H|T])), higherThan(X,H,Level,Dir).
+%		auction([H,X|T], Level, Dir) :- auction([H|T], Level, Dir), not(member(X,[H|T])), higherThan(H,X,Level,Dir).
+		% find the highest bid of a auction (take the head)
+%		highest_bid(X, Level, Dir, UtilX) :- auction([X],Level,Dir), bid(X,Level,Dir,UtilX).
+%		highest_bid(X, Level, Dir, UtilX) :- auction([X|_],Level,Dir), bid(X,Level,Dir,UtilX).
+		%%%%%%%%%%%% end
 		
 	}
 	beliefs{
 		atFloor(1).
-		dir(up).
-		
+		dir(down).
 	}
 	goals{
 				
@@ -42,47 +53,59 @@ event module {
 		% insert "Sender is at floor Lever" whenever received from Sender at floor Level and delete whenever
 		% received from Sendor not at floor Level
 		% agtAtFloor True if agent Agt is at floor Level.
-		forall bel( received(Sender, atFloor(Level)), not(agtAtFloor(Sender, Level)) ) 
-			do insert( agtAtFloor(Sender, Level) )
-			+ delete( received(Sender, atFloor(Level)) ).	% delete received messages //TODO probably don't need
+%		forall bel( received(Sender, atFloor(Level)), not(agtAtFloor(Sender, Level)) ) 
+%			do insert( agtAtFloor(Sender, Level) )
+%			+ delete( received(Sender, atFloor(Level)) ).	% delete received messages //TODO probably don't need
 			
 			
-		forall bel( agtAtFloor(Sender, Level), received(Sender, not(atFloor(Level))) )
-			do delete( agtAtFloor(Sender, Level) )
-			+ delete( received(Sender, not(atFloor(Level))) ).	% delete received messages //TODO probably don't need
+%		forall bel( agtAtFloor(Sender, Level), received(Sender, not(atFloor(Level))) )
+%			do delete( agtAtFloor(Sender, Level) )
+%			+ delete( received(Sender, not(atFloor(Level))) ).	% delete received messages //TODO probably don't need
 		
 		% insert or delete "Level Floor's Dir button is on" when received from elevator agents.
-		forall bel( received(Sender, fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
-			do insert( fButtonOn(Level,Dir) )
-			+ delete( received(Sender, fButtonOn(Level,Dir)) ).	% delete received messages //TODO probably don't need
+%		forall bel( received(Sender, fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
+%			do insert( fButtonOn(Level,Dir) )
+%			+ delete( received(Sender, fButtonOn(Level,Dir)) ).	% delete received messages //TODO probably don't need
 			
-		forall bel( fButtonOn(Level,Dir), received(Sender, not(fButtonOn(Level,Dir))) )
-			do delete( fButtonOn(Level,Dir) )
-			+ delete( received(Sender, not(fButtonOn(Level,Dir))) ).	% delete received messages //TODO probably don't need
+%		forall bel( fButtonOn(Level,Dir), received(Sender, not(fButtonOn(Level,Dir))) )
+%			do delete( fButtonOn(Level,Dir) )
+%			+ delete( received(Sender, not(fButtonOn(Level,Dir))) ).	% delete received messages //TODO probably don't need
 		
 		% update "Sender's doorState" from Old to New
-		forall bel( received(Sender, not(doorState(Old), doorState(New))) ) 
-				do insert( not(elevDoorState(Sender,Old)), elevDoorState(Sender, New) )
-				+ delete( received(Sender, not(doorState(Old), doorState(New))) ).	% delete received messages //TODO probably don't need
+%		forall bel( received(Sender, not(doorState(Old), doorState(New))) ) 
+%				do insert( not(elevDoorState(Sender,Old)), elevDoorState(Sender, New) )
+%				+ delete( received(Sender, not(doorState(Old), doorState(New))) ).	% delete received messages //TODO probably don't need
 		
 		% insert or delte "Sender is going direction Dir" when received from elevators
-		forall bel( received(Sender, dir(Dir)), not(agtDir(Sender, Dir)) )
-			do insert( agtDir(Sender,Dir) )
-			+ delete(received(Sender, dir(Dir))).	% delete received messages //TODO probably don't need
-		forall bel( agtDir(Sender, Dir), received(Sender, not(dir(Dir))) )
-			do delete( agtDir(Sender,Dir) )
-			+ delete( received(Sender, not(dir(Dir))) ). 	% delete received messages //TODO probably don't need
+%		forall bel( received(Sender, dir(Dir)), not(agtDir(Sender, Dir)) )
+%			do insert( agtDir(Sender,Dir) )
+%			+ delete(received(Sender, dir(Dir))).	% delete received messages //TODO probably don't need
+%		forall bel( agtDir(Sender, Dir), received(Sender, not(dir(Dir))) )
+%			do delete( agtDir(Sender,Dir) )
+%			+ delete( received(Sender, not(dir(Dir))) ). 	% delete received messages //TODO probably don't need
 			
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Aim Management
+		% receive bids
 		forall bel( received(Sender, bid(Level, Dir, Util)) )
 			do delete( received(Sender, bid(Level, Dir, Util)) )
 			+ insert( bid(Sender, Level, Dir, Util) ).
-			
-		% send
-		forall bel( highest_bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)) )
+					
+
+		% assign task to the agent who bid highest
+		forall bel( bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)) )
 			do (Receiver).send( aim(Level, Dir) )
-			+ delete( bid(Receiver, Level, Dir, Util) ).
-		
+%				+ delete( highest_bid(Receiver, Level, Dir, Util) )
+				+ delete( bid(Receiver, Level, Dir, Util) ).
+				
+		% delete redundunt bids
+			
+%		forall bel( sent(Receiver, aim(Level, Dir)), bid(OtherAgent, Level, Dir, Util), OtherAgent \= Receiver )
+%			do  delete( bid(OtherAgent,Level,Dir,Util)  )
+%				+ delete( sent(Receiver, aim(Level, Dir)) ).
+				
+%		forall bel( sent(Receiver, aim(LevelX, DirX)), bid(OtherAgent, LevelY, DirY, Util), LevelX = LevelY, DirX = DirY )
+%			do delete( bid(OtherAgent,LevelY,DirY,Util) )
+%				+ delete( sent(Receiver, aim(LevelX, DirX)) ).
 		
 	}
 }

@@ -50,44 +50,41 @@ event module {
 		% Percepts
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%% Not used by now
 		% Send "I am at floor Level" or "I am NOT at floor level" to manager when percepts atFloor(Level) changes
-		%forall bel( agent(manager), not(me(manager)), percept(atFloor(Level)), not(atFloor(Level)) )
-		%	do (manager).sendonce(atFloor(Level)).
-		%forall bel( agent(manager), not(me(manager)), atFloor(Level), not(percept(atFloor(Level))) )
-		%	do (manager).sendonce(not(atFloor(Level))).
+%		forall bel( agent(manager), not(me(manager)), percept(atFloor(Level)), not(atFloor(Level)) )
+%			do (manager).sendonce(atFloor(Level)).
+%		forall bel( agent(manager), not(me(manager)), atFloor(Level), not(percept(atFloor(Level))) )
+%			do (manager).sendonce(not(atFloor(Level))).
 		
 		% Send "Level floor's Dir button is on" or "Level floor's Dir button is NOT on" to manager when percepts fButtonOn(Level,Dir) changes
-		%forall bel(agent(manager), me(elevator), percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
-		%	do (manager).sendonce(fButtonOn(Level,Dir)).
-		%forall bel(agent(manager), me(elevator), fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) )
-		%	do (manager).sendonce(not(fButtonOn(Level,Dir))).
+%		forall bel(agent(manager), me(elevator), percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
+%			do (manager).sendonce(fButtonOn(Level,Dir)).
+%		forall bel(agent(manager), me(elevator), fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) )
+%			do (manager).sendonce(not(fButtonOn(Level,Dir))).
 		
 		% Send doorState to manager when it changes
-		%forall bel( percept(doorState(New)), doorState(Old) ) do (manager).sendonce( not(doorState(Old)), doorState(New) ).
+%		forall bel( percept(doorState(New)), doorState(Old) ) do (manager).sendonce( not(doorState(Old)), doorState(New) ).
 		
 		% Send "I am going Dir direction" or "I am NOT going Dir direction" to manager when dir(Dir) changes
-		%forall bel( agent(manager), not(me(manager)), percept(dir(Dir)), not(dir(Dir)) ) do (manager).sendonce(dir(Dir)).
-		%forall bel( agent(manager), not(me(manager)), dir(Dir), not(percept(dir(Dir))) ) do (manager).sendonce(not(dir(Dir))).
+%		forall bel( agent(manager), not(me(manager)), percept(dir(Dir)), not(dir(Dir)) ) do (manager).sendonce(dir(Dir)).
+%		forall bel( agent(manager), not(me(manager)), dir(Dir), not(percept(dir(Dir))) ) do (manager).sendonce(not(dir(Dir))).
 		
 		
-		% Goal Management
+		%%%%%%%%%%%%%%%% Aim Management
 		
 		% //TODO fButtonOn onRoute 
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) )
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) ) % , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( aim(Level, Dir) ).
-		% //TODO eButtonOn dir
-		%forall bel( percept(eButtonOn(Level)), not(eButtonOn(Level)) ) do insert( eButtonOn(Level) ).
-		%forall bel( eButtonOn(Level), not(percept(eButtonOn(Level))) ) do delete( eButtonOn(Level) ).
-		%forall bel( eButtonOn(Level), dir(Dir) ) do insert( aim(Level, Dir) ).
+
 		% //TODO arbitary service
-		%if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
-		%	then insert( goal(L, D) ).
+		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
+			then insert( aim(L, D) ).
 		
-		% Bid Sending
+		%%%%%%%%%%%%%%%% Bid Sending
 		forall bel( bid(Level, Dir, Util), agent(manager), not(me(manager))  )
 			do (manager).send( bid(Level, Dir, Util) )
 			+ delete( aim(Level, Dir) )
 			+ delete( bid(Level, Dir, Util) ).
-		
+		%%%%%%%%%%%%%%%% Goal receaving
 		forall bel( received(manager, aim(Level, Dir)) )
 			do delete( received(manager, aim(Level, Dir)) )
 			+ adopt( atFloor(Level), dir(Dir) ).
@@ -103,6 +100,10 @@ event module {
 		% The fButton(Level,Dir) percept indicates that the up or down (Dir) button on floor Level has been pressed.
 		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) ) do insert( fButtonOn(Level,Dir) ).
 		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) ) do delete( fButtonOn(Level,Dir) ).
+		
+		% The eButtonOn(Level) percept indicate the level button in the elevator has been pressed		
+%		forall bel( percept(eButtonOn(Level)), not(eButtonOn(Level)) ) do insert( eButtonOn(Level) ).
+%		forall bel( eButtonOn(Level), not(percept(eButtonOn(Level))) ) do delete( eButtonOn(Level) ).
 		
 		% The doorState percept is received only if the door state has changed.
 		% So we do not need to check whether the New value is different from the Old value to avoid unnecessary updates.
@@ -125,7 +126,7 @@ event module {
 
 		% If there are no current goals to pursue, then adopt a goal to service an arbitrary floor for
 		% which a floor button has been pressed that is not already being serviced.
-		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
-			then adopt( atFloor(L), dir(D) ).
+%		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
+%			then adopt( atFloor(L), dir(D) ).
 	}
 }

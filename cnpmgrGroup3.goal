@@ -2,13 +2,19 @@ init module{
 	knowledge{
 		% agent A has bid higher than agent B
 		
-		higherThan(X, Y, Level, Dir) :- bid(X, Level, Dir, UtilX), bid(Y, Level, Dir, UtilY), UtilX>UtilY, agent(X), agent(Y).
+		higherThan(X, Y, Level, Dir) :- bid(X, Level, Dir, UtilX), bid(Y, Level, Dir, UtilY), UtilX>=UtilY, agent(X), agent(Y).
 		
-		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([E], Level, Dir)).
+		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_], Level, Dir)).
 		
-		auction([X|E], Level, Dir) :- auction([E], Level, Dir), bid(X,Level,Dir,UtilX).
 		
-		highest_bid(X, Level, Dir) :- auction([E],Level,Dir).
+		auction([H|T], Level, Dir) :- auction([T], Level, Dir), bid(T,Level,Dir,UtilT), bid(H,Level,Dir,UtilH), higherThan(H,T,Level,Dir).
+		% auction([H|T], Level, Dir) :- auction([H], Level, Dir), bid(H,Level,Dir,UtilH), bid(T,Level,Dir,UtilT), higherThan(H,T,Level,Dir).
+		
+		auction([X,Y|T], Level, Dir) :- auction([Y|T], Level, Dir), bid(Y, Level, Dir, UtilY), bid(X,Level,Dir,UtilX), higherThan(X,Y,Level,Dir).
+		% auction([Y,X|T], Level, Dir) :- auction([Y|T], Level, Dir), bid(Y, Level, Dir, UtilY), bid(X,Level,Dir,UtilX), higherThan(Y,X,Level,Dir).
+		
+		highest_bid(X,Level,Dir,UtilX) :- auction([X],Level,Dir), bid(X,Level,Dir,UtilX).
+		highest_bid(X, Level, Dir, UtilX) :- auction([X|_],Level,Dir), bid(X,Level,Dir,UtilX).
 		
 	}
 	beliefs{
@@ -73,7 +79,7 @@ event module {
 			+ insert( bid(Sender, Level, Dir, Util) ).
 			
 		% send
-		forall bel( bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)) )
+		forall bel( highest_bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)) )
 			do (Receiver).send( aim(Level, Dir) )
 			+ delete( bid(Receiver, Level, Dir, Util) ).
 		

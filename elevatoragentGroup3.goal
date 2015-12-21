@@ -8,7 +8,7 @@ init module {
 		% use percept(carPosition(Here)) instead of atFloor(Here)
 		onRoute(Level, Dir) :- fButtonOn(Level,Dir), percept(carPosition(Here)), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
 		% Utility assignment
-		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
+%		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
 
 	}
 	beliefs{
@@ -59,10 +59,10 @@ event module {
 %			do (manager).sendonce(not(atFloor(Level))).
 		
 		% Send "Level floor's Dir button is on" or "Level floor's Dir button is NOT on" to manager when percepts fButtonOn(Level,Dir) changes
-%		forall bel(agent(manager), me(elevator), percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
-%			do (manager).sendonce(fButtonOn(Level,Dir)).
-%		forall bel(agent(manager), me(elevator), fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) )
-%			do (manager).sendonce(not(fButtonOn(Level,Dir))).
+		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)), agent(manager), me(elevator) )
+			do (manager).sendonce(fButtonOn(Level,Dir)).
+		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))), agent(manager), me(elevator)  )
+			do (manager).sendonce(not(fButtonOn(Level,Dir))).
 		
 		% Send doorState to manager when it changes
 %		forall bel( percept(doorState(New)), doorState(Old) ) do (manager).sendonce( not(doorState(Old)), doorState(New) ).
@@ -76,17 +76,34 @@ event module {
 		
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
 		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) ) , not(goal( atFloor(Level),dir(Dir) ))
-			do insert( aim(Level, Dir) ).
+			do insert( bid(Level, Dir, 10) ).
 
 		% //TODO arbitary service
 		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
-			then insert( aim(L, D) ).
+			then insert( bid(L, D, 1) ).
+		
+		% delete redundant bids
+		forall bel( bid(Level, Dir, AnyUtil), not(fButtonOn(Level, Dir)) )
+			do delete( bid(Level, Dir, AnyUtil) ).
+			
+		%%%%%%%%%%%%%%% Bid Sending with manager's request
+		forall bel( received(manager, please_bid(Level, Dir)), bid(Level, Dir, Util) )
+			do (manager).sendonce(bid(Level, Dir, Util))
+			+ delete( aim(Level, Dir) )
+			+ delete( received(manager, please_bid(Level, Dir)) ).
+%			+ delete( bid(Level, Dir, Util) ).
+		
+		% doesn't work as expected
+%		forall bel( received(manager, please_bid(Level, Dir)), not(bid(Level, Dir, AnyUtil)) )
+%			do delete( received(manager, please_bid(Level, Dir)) ).
+		
 		
 		%%%%%%%%%%%%%%%% Bid Sending
-		forall bel( bid(Level, Dir, Util), agent(manager), not(me(manager))  )
-			do (manager).sendonce( bid(Level, Dir, Util) )
-			+ delete( aim(Level, Dir) )
-			+ delete( bid(Level, Dir, Util) ).
+%		forall bel( bid(Level, Dir, Util), agent(manager), not(me(manager))  )
+%			do (manager).sendonce( bid(Level, Dir, Util) )
+%			+ delete( aim(Level, Dir) )
+%			+ delete( bid(Level, Dir, Util) ).
+
 		%%%%%%%%%%%%%%%% Goal receaving
 		forall bel( received(manager, aim(Level, Dir)) )
 			do delete( received(manager, aim(Level, Dir)) )

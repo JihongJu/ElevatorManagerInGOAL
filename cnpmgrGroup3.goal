@@ -1,5 +1,9 @@
 init module{
 	knowledge{
+		
+		% auction
+		auction(Level, Dir) :- fButtonOn(Level,Dir), not(served(Level,Dir)).
+		
 		% agent X bids higher than agent Y
 		higherThan(X, Y, Level, Dir) :- bid(X, Level, Dir, UtilX), bid(Y, Level, Dir, UtilY), X\=Y, UtilX>UtilY, agent(X), agent(Y).
 		% exist a bid higher than bid (X, Level,Dir,UtilX))
@@ -8,7 +12,7 @@ init module{
 		highest_bid(X, Level,Dir,UtilX) :- bid(X, Level, Dir, UtilX), not(existHigherThan(X, Level, Dir, UtilX)).
 
 		
-		%%%%%%%%%%% don't work properly
+		%%%%%%%%%%% doesn't work properly
 		% new an auction if there is does not exist
 %		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_], Level, Dir)).
 %		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_|_], Level, Dir)).
@@ -29,6 +33,7 @@ init module{
 	beliefs{
 		atFloor(1).
 		dir(down).
+		served(1,down).
 	}
 	goals{
 				
@@ -53,20 +58,20 @@ event module {
 %		forall bel( received(Sender, atFloor(Level)), not(agtAtFloor(Sender, Level)) ) 
 %			do insert( agtAtFloor(Sender, Level) )
 %			+ delete( received(Sender, atFloor(Level)) ).	% delete received messages 
-			
-			
+					
 %		forall bel( agtAtFloor(Sender, Level), received(Sender, not(atFloor(Level))) )
 %			do delete( agtAtFloor(Sender, Level) )
 %			+ delete( received(Sender, not(atFloor(Level))) ).	% delete received messages
 		
 		% insert or delete "Level Floor's Dir button is on" when received from elevator agents.
-%		forall bel( received(Sender, fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
-%			do insert( fButtonOn(Level,Dir) )
-%			+ delete( received(Sender, fButtonOn(Level,Dir)) ).	% delete received messages 
+		forall bel( received(Sender, fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
+			do insert( fButtonOn(Level,Dir) )
+			+ delete( received(Sender, fButtonOn(Level,Dir)) ).	% delete received messages 
 			
-%		forall bel( fButtonOn(Level,Dir), received(Sender, not(fButtonOn(Level,Dir))) )
-%			do delete( fButtonOn(Level,Dir) )
-%			+ delete( received(Sender, not(fButtonOn(Level,Dir))) ).	% delete received messages
+		forall bel(  received(Sender, not(fButtonOn(Level,Dir))), fButtonOn(Level,Dir) )
+			do delete( fButtonOn(Level,Dir) )
+			+ delete( received(Sender, not(fButtonOn(Level,Dir))) )	% delete received messages
+			+ delete( served(Level, Dir) ).	
 		
 		% update "Sender's doorState" from Old to New
 %		forall bel( received(Sender, not(doorState(Old), doorState(New))) ) 
@@ -82,6 +87,11 @@ event module {
 %			+ delete( received(Sender, not(dir(Dir))) ). 	% delete received messages //TODO probably don't need
 			
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Aim Management
+		% send auction
+		forall bel( auction(Level, Dir), agent(Receiver), not(me(Receiver)))
+			do (Receiver).sendonce(please_bid(Level,Dir)).
+
+		
 		% receive bids
 		forall bel( received(Sender, bid(Level, Dir, Util)) )
 			do delete( received(Sender, bid(Level, Dir, Util)) )
@@ -95,19 +105,13 @@ event module {
 		% assign task to the agent who bid highest
 		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)))
 			do (Receiver).sendonce( aim(Level, Dir) )
+				+ insert( served(Level, Dir) )
 				+ delete( highest_bid(Receiver, Level, Dir, Util) )
 				+ delete( bid(Receiver, Level, Dir, Util) ).
+				
+		%//TODO Double check the request from passenger (fButtonOn) is served or not
 		
 
-				
-
-%		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), AnyAgt \= Receiver, 
-%					bid(OtherAgt, Level, Dir, OtherUtil), OtherAgt \= AnyAgt, OtherAgt \= Receiver )
-%			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  )
-%				+ delete( bid(OtherAgt, Level, Dir, OtherUtil) ).
-%		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), AnyAgt \= Receiver)
-%		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util))
-%			do  delete( bid(Receiver, Level, Dir, Util)  ).
 				
 		
 	}

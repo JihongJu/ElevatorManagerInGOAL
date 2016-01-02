@@ -4,10 +4,18 @@ init module {
 		% Note that onRoute only succeeds when the elevator car is "docked", i.e. atFloor(Here) succeeds for
 		% some floor (see also the belief section).
 %		onRoute(Level, Dir) :- atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
-		% fix the 'official' bug in the Assignment 1: onRoute only succeeds when the elevator car is "docked"
+
+		% trying to fix the 'official' bug in the Assignment 1: onRoute only succeeds when the elevator car is "docked"
 		% use percept(carPosition(Here)) instead of atFloor(Here)
 		onRoute(Level, Dir) :- percept(carPosition(Here)), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
-		% Utility assignment
+		
+		% distance calculator
+		distance(Level, Dist) :- percept(carPosition(Here)), Dist is abs(Level-Here).
+		
+		% current load calculator
+%		load().
+		
+		% Utility assignment -> Now move to main module
 %		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
 
 	}
@@ -19,6 +27,8 @@ init module {
 		dir(down).
 		% Initially, it is unknown whether doors are open or closed.
 		doorState(unknown).
+		% Initially, no people in the elevator.
+		people(0).
 	}
 	goals{
 		% atFloor(1), dir(up).
@@ -72,10 +82,10 @@ event module {
 %		forall bel( agent(manager), not(me(manager)), dir(Dir), not(percept(dir(Dir))) ) do (manager).sendonce(not(dir(Dir))).
 		
 		
-		%%%%%%%%%%%%%%%% Aim Management
+		%%%%%%%%%%%%%%%% Bid Management and Utility Assignment
 		
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) ) , not(goal( atFloor(Level),dir(Dir) ))
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist) ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, 10) ).
 
 		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
@@ -86,18 +96,32 @@ event module {
 		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
 			then insert( bid(L, D, 1) ).
 		
+		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
+		if bel( atFloor(1), dir(down), fButtonOn(1,up), not(people(8)) )
+			then insert( bid(1, up, 100) ).
+		
+		% if arriving floor 10 and not full then accept people there
+		if bel( atFloor(10), dir(up), fButtonOn(10,down), not(people(8)) )
+			then insert( bid(10, down, 100) ).
+		
+		
 		% delete redundant bids
+		forall bel( bid(Level, Dir, Util), bid(Level, Dir, AnyUtil), AnyUtil < Util )
+			do delete( bid(Level, Dir, AnyUtil) ).
+		
+		% delete bids for finished tasks
 		forall bel( bid(Level, Dir, AnyUtil), not(fButtonOn(Level, Dir)) )
 			do delete( bid(Level, Dir, AnyUtil) ).
 			
-		%%%%%%%%%%%%%%% Bid Sending with manager's request
+		%%%%%%%%%%%%%%% Bid Sending as manager's request
+		% send the bid as the manager's request 
 		forall bel( received(manager, please_bid(Level, Dir)), bid(Level, Dir, Util) )
 			do (manager).sendonce(bid(Level, Dir, Util))
-			+ delete( aim(Level, Dir) )
-			+ delete( received(manager, please_bid(Level, Dir)) ).
-%			+ delete( bid(Level, Dir, Util) ).
+			+ delete( aim(Level, Dir) ) % OLD aim management
+			+ delete( received(manager, please_bid(Level, Dir)) )
+			+ delete( bid(Level, Dir, Util) ).
 		
-		% doesn't work as expected
+		% delete bidding request from manager if there is no bid for this request
 %		forall bel( received(manager, please_bid(Level, Dir)), not(bid(Level, Dir, AnyUtil)) )
 %			do delete( received(manager, please_bid(Level, Dir)) ).
 		
@@ -108,7 +132,7 @@ event module {
 %			+ delete( aim(Level, Dir) )
 %			+ delete( bid(Level, Dir, Util) ).
 
-		%%%%%%%%%%%%%%%% Goal receaving
+		%%%%%%%%%%%%%%%% Goal receiving
 		forall bel( received(manager, aim(Level, Dir)) )
 			do delete( received(manager, aim(Level, Dir)) )
 			+ adopt( atFloor(Level), dir(Dir) ).
@@ -132,6 +156,10 @@ event module {
 		% The doorState percept is received only if the door state has changed.
 		% So we do not need to check whether the New value is different from the Old value to avoid unnecessary updates.
 		forall bel( percept(doorState(New)), doorState(Old) ) do insert( not(doorState(Old)), doorState(New) ).
+		
+		% People load
+		forall bel( percept(people(New)), people(Old) ) do insert( not(people(Old)), people(New) ).
+		
 		
 
 

@@ -10,6 +10,10 @@ init module{
 		existHigherThan(X, Level,Dir,UtilX) :- higherThan(_,X,Level,Dir).
 		% there does not exist a bid higher than the highest bid
 		highest_bid(X, Level,Dir,UtilX) :- bid(X, Level, Dir, UtilX), not(existHigherThan(X, Level, Dir, UtilX)).
+		
+		% set agent priority for task assignment
+		priorTo(X,Z) :- priorTo(X,Y), priorTo(Y,Z), agent(X), agent(Y), agent(Z).
+		
 
 		
 		%%%%%%%%%%% doesn't work properly
@@ -34,6 +38,9 @@ init module{
 		atFloor(1).
 		dir(down).
 		served(1,down).
+		
+		priorTo(elevator,elevator_0).
+		priorTo(elevator_0,elevator_1).
 	}
 	goals{
 				
@@ -101,6 +108,14 @@ event module {
 		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), AnyUtil \= Util)
 			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  ).
 			
+		% keep only one highest bid if more than one exist based on the proiority of agents
+		forall bel( highest_bid(Receiver, Level, Dir, Util), AnyAgt \= Receiver, priorTo(Receiver, AnyAgt), highest_bid(AnyAgt, Level, Dir, Util)  )
+			do delete( bid(AnyAgt, Level, Dir, Util)  )
+			+ delete( highest_bid(AnyAgt, Level, Dir, Util) ).
+		
+%		% if more than one highest bids exist, delete the redundant ones and keep only one left
+%		forall bel( highest_bid(AnyAgt, Level, Dir, Util), highest_bid(OtherAgt, Level, Level, Util), OtherAgt \= AnyAgt )
+%			do delete( highest_bid(OtherAgt, Level, Level, Util) ).
 
 		% assign task to the agent who bid highest
 		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)))

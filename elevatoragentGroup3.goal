@@ -3,10 +3,10 @@ init module {
 		% onRoute succeeds when Level is in the current direction Dir relative to the floor the agent is at.
 		% Note that onRoute only succeeds when the elevator car is "docked", i.e. atFloor(Here) succeeds for
 		% some floor (see also the belief section).
-%		onRoute(Level, Dir) :- fButtonOn(Level,Dir), atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
+%		onRoute(Level, Dir) :- atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
 		% fix the 'official' bug in the Assignment 1: onRoute only succeeds when the elevator car is "docked"
 		% use percept(carPosition(Here)) instead of atFloor(Here)
-		onRoute(Level, Dir) :- fButtonOn(Level,Dir), percept(carPosition(Here)), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
+		onRoute(Level, Dir) :- percept(carPosition(Here)), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
 		% Utility assignment
 %		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
 
@@ -78,6 +78,10 @@ event module {
 		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, 10) ).
 
+		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
+		% '6353' case, it is fButtonOn(9,down). Then the agent will 'goto' Level 9 as it is the only goal it has. The agent will
+		% not stop by the other floor even thoug there is a request on route and it is added to the goal because it is executing
+		% goto action.
 		% //TODO arbitary service
 		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
 			then insert( bid(L, D, 1) ).

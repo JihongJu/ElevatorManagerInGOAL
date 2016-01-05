@@ -12,8 +12,8 @@ init module {
 		% distance calculator
 		distance(Level, Dist) :- percept(carPosition(Here)), Dist is abs(Level-Here).
 		
-		% current load calculator
-%		load().
+		% current available space
+		space(N) :- people(P), capacity(C), M is C-P.
 		
 		% Utility assignment -> Now move to main module
 %		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
@@ -85,8 +85,8 @@ event module {
 		%%%%%%%%%%%%%%%% Bid Management and Utility Assignment
 		
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist) ) , not(goal( atFloor(Level),dir(Dir) ))
-			do insert( bid(Level, Dir, 10) ).
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(N), Util is (10) ) , not(goal( atFloor(Level),dir(Dir) ))
+			do insert( bid(Level, Dir, Util) ).
 
 		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
 		% '6353' case, it is fButtonOn(9,down). Then the agent will 'goto' Level 9 as it is the only goal it has. The agent will
@@ -94,7 +94,7 @@ event module {
 		% goto action.
 		% //TODO arbitary service
 		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
-			then insert( bid(L, D, 1) ).
+			then insert( bid(L, D, 10) ).
 		
 		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
 		if bel( atFloor(1), dir(down), fButtonOn(1,up), not(people(8)) )
@@ -157,8 +157,15 @@ event module {
 		% So we do not need to check whether the New value is different from the Old value to avoid unnecessary updates.
 		forall bel( percept(doorState(New)), doorState(Old) ) do insert( not(doorState(Old)), doorState(New) ).
 		
-		% People load
+		% People load. This percept is only sent when the number N has just changed.
 		forall bel( percept(people(New)), people(Old) ) do insert( not(people(Old)), people(New) ).
+		
+		% Capacity.This percept is only sent once at the start of a simulation.
+		if bel( percept(capacity(C)) ) then insert( capacity(C) ).
+		
+		% Number of floors. This percept is only sent once at the start of a simulation.
+		if bel(percept(floorCount(N))) then insert(floorCount(N)).
+		
 		
 		
 

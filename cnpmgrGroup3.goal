@@ -7,12 +7,16 @@ init module{
 		% agent X bids higher than agent Y
 		higherThan(X, Y, Level, Dir) :- bid(X, Level, Dir, UtilX), bid(Y, Level, Dir, UtilY), X\=Y, UtilX>UtilY, agent(X), agent(Y).
 		% exist a bid higher than bid (X, Level,Dir,UtilX))
-		existHigherThan(X, Level,Dir,UtilX) :- higherThan(_,X,Level,Dir).
+		existHigherThan(X, Level,Dir,UtilX) :- bid(X, Level, Dir, UtilX), higherThan(_,X,Level,Dir).
 		% there does not exist a bid higher than the highest bid
 		highest_bid(X, Level,Dir,UtilX) :- bid(X, Level, Dir, UtilX), not(existHigherThan(X, Level, Dir, UtilX)).
 		
+		% exist a bid for the auction
+		existABid(Level, Dir) :- auction(Level, Dir), bid(AnyAgt, Level, Dir, AnyUtil).
+		
 		% set agent priority for task assignment
 		priorTo(X,Z) :- priorTo(X,Y), priorTo(Y,Z), agent(X), agent(Y), agent(Z).
+		
 		
 
 		
@@ -78,7 +82,8 @@ event module {
 		forall bel(  received(Sender, not(fButtonOn(Level,Dir))), fButtonOn(Level,Dir) )
 			do delete( fButtonOn(Level,Dir) )
 			+ delete( received(Sender, not(fButtonOn(Level,Dir))) )	% delete received messages
-			+ delete( served(Level, Dir) ).	
+			+ delete( served(Level, Dir) )
+			+ delete( sentRequest(Level, Dir) ).	
 		
 		% update "Sender's doorState" from Old to New
 %		forall bel( received(Sender, not(doorState(Old), doorState(New))) ) 
@@ -95,27 +100,36 @@ event module {
 			
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Aim Management
 		% send auction
-		forall bel( auction(Level, Dir), agent(Receiver), not(me(Receiver)))
-			do (Receiver).sendonce(please_bid(Level,Dir)).
+		forall bel( agent(Receiver), not(me(Receiver)), auction(Level, Dir), not(sentRequest(Level, Dir)) )
+			do (Receiver).sendonce(please_bid(Level,Dir))
+			+ insert( sentRequest(Level, Dir) ).
 
 		
 		% receive bids
-		forall bel( received(Sender, bid(Level, Dir, Util)) )
+
+		% //TODO accept the first bid for an auction (it actually accepts all bids)
+		forall bel( received(Sender, bid(Level, Dir, Util)), not(existABid(Level,Dir)) )
 			do delete( received(Sender, bid(Level, Dir, Util)) )
 			+ insert( bid(Sender, Level, Dir, Util) ).
 		
+		% //TODO accept bid with different utility from the previous one
+		forall bel( received(Sender, bid(Level, Dir, Util)), bid(OtherSender, Level, Dir, OtherUtil), Util \= OtherUtil, Sender \= OtherSender )
+			do delete( received(Sender, bid(Level, Dir, Util)) )
+			+ insert( bid(Sender, Level, Dir, Util) ).
+			
+		
 		% delete redundant bids
-		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), AnyUtil \= Util)
+		forall bel( highest_bid(Sender, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), Util > AnyUtil)
 			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  ).
 			
-		% keep only one highest bid if more than one exist based on the proiority of agents
-		forall bel( highest_bid(Receiver, Level, Dir, Util), AnyAgt \= Receiver, priorTo(Receiver, AnyAgt), highest_bid(AnyAgt, Level, Dir, Util)  )
-			do delete( bid(AnyAgt, Level, Dir, Util)  )
-			+ delete( highest_bid(AnyAgt, Level, Dir, Util) ).
+%		% keep only one highest bid if more than one exist based on the proiority of agents (does not work))
+%		forall bel( highest_bid(Receiver, Level, Dir, Util), AnyAgt \= Receiver, priorTo(Receiver, AnyAgt), highest_bid(AnyAgt, Level, Dir, Util)  )
+%			do delete( bid(AnyAgt, Level, Dir, Util)  )
+%			+ delete( highest_bid(AnyAgt, Level, Dir, Util) ).
 		
-%		% if more than one highest bids exist, delete the redundant ones and keep only one left
-%		forall bel( highest_bid(AnyAgt, Level, Dir, Util), highest_bid(OtherAgt, Level, Level, Util), OtherAgt \= AnyAgt )
-%			do delete( highest_bid(OtherAgt, Level, Level, Util) ).
+%		% if more than one highest bids exist, delete the redundant ones and keep only one left (does not work)
+%		forall bel( bid(AnyAgt, Level, Dir, Util), bid(OtherAgt, Level, Level, Util), OtherAgt \= AnyAgt )
+%			do delete( bid(OtherAgt, Level, Level, Util) ).
 
 		% assign task to the agent who bid highest
 		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)))

@@ -85,7 +85,7 @@ event module {
 		%%%%%%%%%%%%%%%% Bid Management and Utility Assignment
 		
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (M*(0.4)-Dist*(0.6)), not(bid(Level, Dir, Util)) ) , not(goal( atFloor(Level),dir(Dir) ))
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (M*(0.6)-Dist*(0.4)), not(bid(Level, Dir, Util))) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, Util) ).
 
 		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
@@ -93,15 +93,15 @@ event module {
 		% not stop by the other floor even thoug there is a request on route and it is added to the goal because it is executing
 		% goto action.
 		% //TODO arbitary service
-		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed), distance(L, Dist), space(M), Util is (M*(0.4)-Dist*(0.6)) )
+		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed), distance(L, Dist), Util is (Dist) )
 			then insert( bid(L, D, Util) ).
 		
 		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
-		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 10, not(bid(1, up, Util)) )
+		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, not(bid(1, up, Util)) )
 			then insert( bid(1, up, Util) ).
 		
 		% if arriving floor 10 and not full then accept people there
-		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 10, not(bid(N, down, Util)) )
+		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
 			then insert( bid(N, down, Util) ).
 		
 		

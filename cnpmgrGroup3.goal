@@ -11,6 +11,7 @@ init module{
 		% there does not exist a bid higher than the highest bid
 		highest_bid(X, Level,Dir,UtilX) :- bid(X, Level, Dir, UtilX), not(existHigherThan(X, Level, Dir, UtilX)).
 		
+		
 		% exist a bid for the auction
 		existABid(Level, Dir) :- auction(Level, Dir), bid(AnyAgt, Level, Dir, AnyUtil).
 		
@@ -20,22 +21,6 @@ init module{
 		
 
 		
-		%%%%%%%%%%% doesn't work properly
-		% new an auction if there is does not exist
-%		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_], Level, Dir)).
-%		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_|_], Level, Dir)).
-		% add a bid to an exist auction
-		% If there is already one bid in the auction, put the higher bid in front of the lower one
-%		auction([X,Y], Level, Dir) :- auction([Y], Level, Dir), not(X=Y), higherThan(X,Y,Level,Dir). 	% do not need bid(Y,Level,Dir,UtilY),
-%		auction([Y,X], Level, Dir) :- auction([Y], Level, Dir), not(X=Y), higherThan(Y,X,Level,Dir). 	% bid(X,Level,Dir,UtilX) here
-		% If there are more than one bids, compare the new bid and the head of the old list (which is the highest) 
-		% and make the higher one as the new head
-%		auction([X,H|T], Level, Dir) :- auction([H|T], Level, Dir), not(member(X,[H|T])), higherThan(X,H,Level,Dir).
-%		auction([H,X|T], Level, Dir) :- auction([H|T], Level, Dir), not(member(X,[H|T])), higherThan(H,X,Level,Dir).
-		% find the highest bid of a auction (take the head)
-%		highest_bid(X, Level, Dir, UtilX) :- auction([X],Level,Dir), bid(X,Level,Dir,UtilX).
-%		highest_bid(X, Level, Dir, UtilX) :- auction([X|_],Level,Dir), bid(X,Level,Dir,UtilX).
-		%%%%%%%%%%%% end
 		
 	}
 	beliefs{
@@ -83,7 +68,7 @@ event module {
 			do delete( fButtonOn(Level,Dir) )
 			+ delete( received(Sender, not(fButtonOn(Level,Dir))) )	% delete received messages
 			+ delete( served(Level, Dir) )
-			+ delete( sentRequest(Level, Dir) ).	
+			+ delete( requestSent(Level, Dir) ).	
 		
 		% update "Sender's doorState" from Old to New
 %		forall bel( received(Sender, not(doorState(Old), doorState(New))) ) 
@@ -98,27 +83,32 @@ event module {
 %			do delete( agtDir(Sender,Dir) )
 %			+ delete( received(Sender, not(dir(Dir))) ). 	% delete received messages //TODO probably don't need
 			
-		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Aim Management
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Bids Management
 		% send auction
-		forall bel( agent(Receiver), not(me(Receiver)), auction(Level, Dir), not(sentRequest(Level, Dir)) )
+		forall bel( agent(Receiver), not(me(Receiver)), auction(Level, Dir), not(requestSent(Level, Dir)) )
 			do (Receiver).sendonce(please_bid(Level,Dir))
-			+ insert( sentRequest(Level, Dir) ).
+			+ insert( requestSent(Level, Dir) ).
 
 		
-		% receive bids
+		%%%%% receive bids
 
-		% //TODO accept the first bid for an auction (it actually accepts all bids)
-		forall bel( received(Sender, bid(Level, Dir, Util)), not(existABid(Level,Dir)) )
+		% accept the first bid for an auction
+		forall bel( received(Sender, bid(Level, Dir, Util)), auction(Level, Dir), not(existABid(Level,Dir)) )
 			do delete( received(Sender, bid(Level, Dir, Util)) )
 			+ insert( bid(Sender, Level, Dir, Util) ).
 		
-		% //TODO accept bid with different utility from the previous one
+		% accept bid with different utility from the previous one
 		forall bel( received(Sender, bid(Level, Dir, Util)), bid(OtherSender, Level, Dir, OtherUtil), Util \= OtherUtil, Sender \= OtherSender )
 			do delete( received(Sender, bid(Level, Dir, Util)) )
 			+ insert( bid(Sender, Level, Dir, Util) ).
+		
+		% reject bid with the same utility from the previous one
+		forall bel( received(Sender, bid(Level, Dir, Util)), bid(OtherSender, Level, Dir, OtherUtil), Util = OtherUtil )
+			do delete( received(Sender, bid(Level, Dir, Util)) ).
+
 			
 		
-		% delete redundant bids
+		%%%%% delete redundant bids
 		forall bel( highest_bid(Sender, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), Util > AnyUtil)
 			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  ).
 			
@@ -138,7 +128,8 @@ event module {
 				+ delete( highest_bid(Receiver, Level, Dir, Util) )
 				+ delete( bid(Receiver, Level, Dir, Util) ).
 				
-		%//TODO Double check the request from passenger (fButtonOn) is served or not
+		% //TODO Double check the request from passenger (fButtonOn) is served or not
+		% served(Level,Dir), requestSent(Level,Dir)
 		
 
 				

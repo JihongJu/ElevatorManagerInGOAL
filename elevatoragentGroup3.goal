@@ -13,7 +13,7 @@ init module {
 		distance(Level, Dist) :- percept(carPosition(Here)), Dist is abs(Level-Here).
 		
 		% current available space
-		space(N) :- people(P), capacity(C), M is C-P.
+		space(M) :- people(P), capacity(C), M is C-P.
 		
 		% Utility assignment -> Now move to main module
 %		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
@@ -69,9 +69,9 @@ event module {
 %			do (manager).sendonce(not(atFloor(Level))).
 		
 		% Send "Level floor's Dir button is on" or "Level floor's Dir button is NOT on" to manager when percepts fButtonOn(Level,Dir) changes
-		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)), agent(manager), me(elevator) )
+		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)), agent(manager), not(me(manager)) )
 			do (manager).sendonce(fButtonOn(Level,Dir)).
-		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))), agent(manager), me(elevator)  )
+		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))), agent(manager), not(me(manager))  )
 			do (manager).sendonce(not(fButtonOn(Level,Dir))).
 		
 		% Send doorState to manager when it changes
@@ -85,7 +85,7 @@ event module {
 		%%%%%%%%%%%%%%%% Bid Management and Utility Assignment
 		
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(N), Util is (10) ) , not(goal( atFloor(Level),dir(Dir) ))
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (10), not(bid(Level, Dir, Util)) ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, Util) ).
 
 		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
@@ -97,12 +97,12 @@ event module {
 			then insert( bid(L, D, 10) ).
 		
 		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
-		if bel( atFloor(1), dir(down), fButtonOn(1,up), not(people(8)) )
-			then insert( bid(1, up, 100) ).
+		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, not(bid(1, up, Util)) )
+			then insert( bid(1, up, Util) ).
 		
 		% if arriving floor 10 and not full then accept people there
-		if bel( atFloor(10), dir(up), fButtonOn(10,down), not(people(8)) )
-			then insert( bid(10, down, 100) ).
+		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(10,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
+			then insert( bid(N, down, Util) ).
 		
 		
 		% delete redundant bids

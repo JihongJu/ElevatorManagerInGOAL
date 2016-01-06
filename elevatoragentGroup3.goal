@@ -1,0 +1,197 @@
+init module {
+	knowledge{
+		% onRoute succeeds when Level is in the current direction Dir relative to the floor the agent is at.
+		% Note that onRoute only succeeds when the elevator car is "docked", i.e. atFloor(Here) succeeds for
+		% some floor (see also the belief section).
+%		onRoute(Level, Dir) :- atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
+
+		% trying to fix the 'official' bug in the Assignment 1: onRoute only succeeds when the elevator car is "docked"
+		% use percept(carPosition(Here)) instead of atFloor(Here)
+		onRoute(Level, Dir) :- percept(carPosition(Here)), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
+		
+		% distance calculator
+		distance(Level, Dist) :- percept(carPosition(Here)), Dist is abs(Level-Here).
+		
+		% current available space
+		space(M) :- people(P), capacity(C), M is C-P.
+		
+		% existABid
+		existABid(Level, Dir) :- bid(Level, Dir, AnyUtil).
+		
+		% Utility assignment -> Now move to main module
+%		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
+
+	}
+	beliefs{
+		% The direction that will be shown to the people at the next stop.
+		% This remains the intended direction of movement until there are no more
+		% planned stops in that direction.
+		atFloor(1).
+		dir(down).
+		% Initially, it is unknown whether doors are open or closed.
+		doorState(unknown).
+		% Initially, no people in the elevator.
+		people(0).
+	}
+	goals{
+		% atFloor(1), dir(up).
+	}
+	actionspec{
+		% The action goto(Level, Dir) moves the elevator car to floor Level. It can
+		% only be performed if the elevator car is docked and not moving, i.e.,
+		% atFloor(Here) holds for some Here.
+		% When the elevator arrives at the requested floor, the Dir light will turn on.
+		goto(Level, Dir) {
+		   pre{ atFloor(Here), dir(DirNow), doorState(closed) }
+		   post{ not(dir(DirNow)), dir(Dir) }
+		}
+	}
+}
+	
+main module {
+	program {
+		% Goto the nearest floor that the agent wants to go to.
+		if a-goal( atFloor(Level), dir(Dir) ),
+			bel( atFloor(Here), Distance is abs(Level-Here) ),
+		    not(a-goal( atFloor(OtherLevel),
+				OtherDistance is abs(OtherLevel-Here), OtherDistance<Distance) )
+		then goto(Level, Dir).
+	}
+}
+	
+event module {
+	program {
+		%%%%% Communication Processing %%%%%
+		
+		% Percepts
+		%%%%%%%%%%%%%%%%%%%%%%%%%%%% Not used by now
+		% Send "I am at floor Level" or "I am NOT at floor level" to manager when percepts atFloor(Level) changes
+%		forall bel( agent(manager), not(me(manager)), percept(atFloor(Level)), not(atFloor(Level)) )
+%			do (manager).sendonce(atFloor(Level)).
+%		forall bel( agent(manager), not(me(manager)), atFloor(Level), not(percept(atFloor(Level))) )
+%			do (manager).sendonce(not(atFloor(Level))).
+		
+		% Send "Level floor's Dir button is on" or "Level floor's Dir button is NOT on" to manager when percepts fButtonOn(Level,Dir) changes
+		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)), agent(manager), me(elevator) )
+			do (manager).send(fButtonOn(Level,Dir))
+			+ delete( sent(manager, fButtonOn(Level,Dir)) ).
+		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))), agent(manager), me(elevator)  )
+			do (manager).send(not(fButtonOn(Level,Dir)))
+			+ delete( sent(manager, not(fButtonOn(Level,Dir))) ).
+		
+		% Send doorState to manager when it changes
+%		forall bel( percept(doorState(New)), doorState(Old) ) do (manager).sendonce( not(doorState(Old)), doorState(New) ).
+		
+		% Send "I am going Dir direction" or "I am NOT going Dir direction" to manager when dir(Dir) changes
+%		forall bel( agent(manager), not(me(manager)), percept(dir(Dir)), not(dir(Dir)) ) do (manager).sendonce(dir(Dir)).
+%		forall bel( agent(manager), not(me(manager)), dir(Dir), not(percept(dir(Dir))) ) do (manager).sendonce(not(dir(Dir))).
+		
+		
+		%%%%%%%%%%%%%%%% Bid Management and Utility Assignment
+		
+		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is 10, not(bid(Level, Dir, Util)) ) , not(goal( atFloor(Level),dir(Dir) ))
+			do insert( bid(Level, Dir, Util) ).
+
+		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
+		% '6353' case, it is fButtonOn(9,down). Then the agent will 'goto' Level 9 as it is the only goal it has. The agent will
+		% not stop by the other floor even thoug there is a request on route and it is added to the goal because it is executing
+		% goto action.
+		% //TODO arbitary service
+		if bel( atFloor(Any), Util is random(10), not(bid(L,D,Util)) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
+			then insert( bid(L, D, Util) ).
+		
+		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
+		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, not(bid(1, up, Util)) )
+			then insert( bid(1, up, Util) ).
+		
+		% if arriving floor 10 and not full then accept people there
+		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
+			then insert( bid(N, down, Util) ).
+		
+		
+		% delete redundant bids
+		forall bel( bid(Level, Dir, Util), bid(Level, Dir, AnyUtil), AnyUtil < Util )
+			do delete( bid(Level, Dir, AnyUtil) ).
+		
+		% delete bids for finished tasks
+		forall bel( bid(Level, Dir, AnyUtil), not(fButtonOn(Level, Dir)) )
+			do delete( bid(Level, Dir, AnyUtil) ).
+			
+		%%%%%%%%%%%%%%% Bid Sending as manager's request
+		% send the bid as the manager's request 
+		forall bel( received(manager, please_bid(Level, Dir)), bid(Level, Dir, Util) )
+			do (manager).sendonce(bid(Level, Dir, Util))
+			+ delete( aim(Level, Dir) ) % OLD aim management
+			+ delete( received(manager, please_bid(Level, Dir)) )
+			+ delete( bid(Level, Dir, Util) ).
+		
+		% send 0 utility bid and delete bidding request from manager if there is no bid for this request
+		forall bel( received(manager, please_bid(Level, Dir)), not(existABid(Level, Dir)) )
+			do (manager).sendonce(bid(Level, Dir, 0))
+			+ delete( received(manager, please_bid(Level, Dir)) ).
+		
+		
+		%%%%%%%%%%%%%%%% Bid Sending
+%		forall bel( bid(Level, Dir, Util), agent(manager), not(me(manager))  )
+%			do (manager).sendonce( bid(Level, Dir, Util) )
+%			+ delete( aim(Level, Dir) )
+%			+ delete( bid(Level, Dir, Util) ).
+
+		%%%%%%%%%%%%%%%% Goal receiving
+		forall bel( received(manager, aim(Level, Dir)) )
+			do delete( received(manager, aim(Level, Dir)) )
+			+ adopt( atFloor(Level), dir(Dir) ).
+		
+		
+		%%%%% Percept Processing %%%%%
+
+		
+		% The atFloor(Level) percept is received only when elevator has stopped at a floor Level.
+		forall bel( percept(atFloor(Level)), not(atFloor(Level)) ) do insert( atFloor(Level) ).
+		forall bel( atFloor(Level), not(percept(atFloor(Level))) ) do delete( atFloor(Level) ).
+				
+		% The fButton(Level,Dir) percept indicates that the up or down (Dir) button on floor Level has been pressed.
+		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) ) do insert( fButtonOn(Level,Dir) ).
+		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) ) do delete( fButtonOn(Level,Dir) ).
+		
+		% The eButtonOn(Level) percept indicate the level button in the elevator has been pressed		
+		forall bel( percept(eButtonOn(Level)), not(eButtonOn(Level)) ) do insert( eButtonOn(Level) ).
+		forall bel( eButtonOn(Level), not(percept(eButtonOn(Level))) ) do delete( eButtonOn(Level) ).
+		
+		% The doorState percept is received only if the door state has changed.
+		% So we do not need to check whether the New value is different from the Old value to avoid unnecessary updates.
+		forall bel( percept(doorState(New)), doorState(Old) ) do insert( not(doorState(Old)), doorState(New) ).
+		
+		% People load. This percept is only sent when the number N has just changed.
+		forall bel( percept(people(New)), people(Old) ) do insert( not(people(Old)), people(New) ).
+		
+		% Capacity.This percept is only sent once at the start of a simulation.
+		if bel( percept(capacity(C)) ) then insert( capacity(C) ).
+		
+		% Number of floors. This percept is only sent once at the start of a simulation.
+		if bel(percept(floorCount(N))) then insert(floorCount(N)).
+		
+		
+		
+
+
+		%%%%% Goal Management %%%%%
+
+		% The elevator agent changes its plans only while it is docked, i.e., at a floor
+		% and not moving.
+		
+		% Adopt new stops that are on this agent's route.
+		%forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir) ) do adopt( atFloor(Level), dir(Dir) ).
+				
+		% The eButton(Level) percept is received when the elevator button on floor Level has been pressed.
+		% In that case, the agent will adopt a goal to service that floor. It is ASSUMED that a button for a floor is
+		% pressed that is "on route", i.e. in the direction the elevator is currently travelling.
+		forall bel( percept(eButtonOn(Level)), dir(Dir) ) do adopt( atFloor(Level), dir(Dir) ).
+
+		% If there are no current goals to pursue, then adopt a goal to service an arbitrary floor for
+		% which a floor button has been pressed that is not already being serviced.
+%		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
+%			then adopt( atFloor(L), dir(D) ).
+	}
+}

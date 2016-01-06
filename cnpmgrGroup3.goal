@@ -103,8 +103,9 @@ event module {
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Bids Management
 		% send auction
 		forall bel( agent(Receiver), not(me(Receiver)), auction(Level, Dir), not(requestSent(Level, Dir)) )
-			do (Receiver).send(please_bid(Level,Dir))
-			+ insert( requestSent(Level, Dir) ).
+			do (Receiver).sendonce(please_bid(Level,Dir))
+			+ insert( requestSent(Level, Dir) )
+			+ delete( sent(Receiver, please_bid(Level,Dir)) ).
 
 		
 		%%%%% receive bids
@@ -152,7 +153,8 @@ event module {
 			do (Receiver).sendonce( aim(Level, Dir) )
 				+ insert( served(Level, Dir) )
 				+ delete( highest_bid(Receiver, Level, Dir, Util) )
-				+ delete( bid(Receiver, Level, Dir, Util) ).
+				+ delete( bid(Receiver, Level, Dir, Util) )
+				+ delete( sent(Receiver, aim(Level, Dir)) ).
 				
 		% delete hasBid information when one auction has been served
 		forall bel( served(Level, Dir), agent(Agt), not(me(Agt)) )

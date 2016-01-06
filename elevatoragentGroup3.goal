@@ -73,10 +73,10 @@ event module {
 		
 		% Send "Level floor's Dir button is on" or "Level floor's Dir button is NOT on" to manager when percepts fButtonOn(Level,Dir) changes
 		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)), agent(manager), me(elevator) )
-			do (manager).send(fButtonOn(Level,Dir))
+			do (manager).sendonce(fButtonOn(Level,Dir))
 			+ delete( sent(manager, fButtonOn(Level,Dir)) ).
 		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))), agent(manager), me(elevator)  )
-			do (manager).send(not(fButtonOn(Level,Dir)))
+			do (manager).sendonce(not(fButtonOn(Level,Dir)))
 			+ delete( sent(manager, not(fButtonOn(Level,Dir))) ).
 		
 		% Send doorState to manager when it changes
@@ -124,19 +124,22 @@ event module {
 			do (manager).sendonce(bid(Level, Dir, Util))
 			+ delete( aim(Level, Dir) ) % OLD aim management
 			+ delete( received(manager, please_bid(Level, Dir)) )
-			+ delete( bid(Level, Dir, Util) ).
+			+ delete( bid(Level, Dir, Util) )
+			+ delete( sent(manager, bid(Level, Dir, Util)) ).
 		
 		% send 0 utility bid and delete bidding request from manager if there is no bid for this request
 		forall bel( received(manager, please_bid(Level, Dir)), not(existABid(Level, Dir)) )
 			do (manager).sendonce(bid(Level, Dir, 0))
-			+ delete( received(manager, please_bid(Level, Dir)) ).
+			+ delete( received(manager, please_bid(Level, Dir)) )
+			+ delete( sent(manager, bid(Level, Dir, 0)) ).
 		
 		
 		%%%%%%%%%%%%%%%% Bid Sending
 %		forall bel( bid(Level, Dir, Util), agent(manager), not(me(manager))  )
 %			do (manager).sendonce( bid(Level, Dir, Util) )
 %			+ delete( aim(Level, Dir) )
-%			+ delete( bid(Level, Dir, Util) ).
+%			+ delete( bid(Level, Dir, Util) )
+%			+ delete( sent(manager, bid(Level, Dir, Util)) ).
 
 		%%%%%%%%%%%%%%%% Goal receiving
 		forall bel( received(manager, aim(Level, Dir)) )

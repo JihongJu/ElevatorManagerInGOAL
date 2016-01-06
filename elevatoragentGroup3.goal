@@ -101,10 +101,14 @@ event module {
 		
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
 <<<<<<< HEAD
+<<<<<<< HEAD
 		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (10), not(bid(Level, Dir, Util)) ) , not(goal( atFloor(Level),dir(Dir) ))
 =======
 		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is 10, not(bid(Level, Dir, Util)) ) , not(goal( atFloor(Level),dir(Dir) ))
 >>>>>>> jihong
+=======
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (M*(0.6)-Dist*(0.4)), not(bid(Level, Dir, Util))) , not(goal( atFloor(Level),dir(Dir) ))
+>>>>>>> b4d22a78b65bba931f4c46637ba5b5b7050ea1bf
 			do insert( bid(Level, Dir, Util) ).
 
 		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
@@ -113,12 +117,17 @@ event module {
 		% goto action.
 		% //TODO arbitary service
 <<<<<<< HEAD
+<<<<<<< HEAD
 		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
 			then insert( bid(L, D, 10) ).
 =======
 		if bel( atFloor(Any), Util is random(10), not(bid(L,D,Util)) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
 			then insert( bid(L, D, Util) ).
 >>>>>>> jihong
+=======
+		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed), distance(L, Dist), Util is (Dist) )
+			then insert( bid(L, D, Util) ).
+>>>>>>> b4d22a78b65bba931f4c46637ba5b5b7050ea1bf
 		
 		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
 		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, not(bid(1, up, Util)) )
@@ -126,10 +135,14 @@ event module {
 		
 		% if arriving floor 10 and not full then accept people there
 <<<<<<< HEAD
+<<<<<<< HEAD
 		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(10,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
 =======
 		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
 >>>>>>> jihong
+=======
+		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
+>>>>>>> b4d22a78b65bba931f4c46637ba5b5b7050ea1bf
 			then insert( bid(N, down, Util) ).
 		
 		

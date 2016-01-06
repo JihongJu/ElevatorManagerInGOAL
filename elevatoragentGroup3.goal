@@ -15,6 +15,12 @@ init module {
 		% current available space
 		space(M) :- people(P), capacity(C), M is C-P.
 		
+<<<<<<< HEAD
+=======
+		% existABid
+		existABid(Level, Dir) :- bid(Level, Dir, AnyUtil).
+		
+>>>>>>> jihong
 		% Utility assignment -> Now move to main module
 %		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
 
@@ -69,10 +75,19 @@ event module {
 %			do (manager).sendonce(not(atFloor(Level))).
 		
 		% Send "Level floor's Dir button is on" or "Level floor's Dir button is NOT on" to manager when percepts fButtonOn(Level,Dir) changes
+<<<<<<< HEAD
 		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)), agent(manager), not(me(manager)) )
 			do (manager).sendonce(fButtonOn(Level,Dir)).
 		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))), agent(manager), not(me(manager))  )
 			do (manager).sendonce(not(fButtonOn(Level,Dir))).
+=======
+		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)), agent(manager), me(elevator) )
+			do (manager).send(fButtonOn(Level,Dir))
+			+ delete( sent(manager, fButtonOn(Level,Dir)) ).
+		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))), agent(manager), me(elevator)  )
+			do (manager).send(not(fButtonOn(Level,Dir)))
+			+ delete( sent(manager, not(fButtonOn(Level,Dir))) ).
+>>>>>>> jihong
 		
 		% Send doorState to manager when it changes
 %		forall bel( percept(doorState(New)), doorState(Old) ) do (manager).sendonce( not(doorState(Old)), doorState(New) ).
@@ -85,7 +100,11 @@ event module {
 		%%%%%%%%%%%%%%%% Bid Management and Utility Assignment
 		
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
+<<<<<<< HEAD
 		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (10), not(bid(Level, Dir, Util)) ) , not(goal( atFloor(Level),dir(Dir) ))
+=======
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is 10, not(bid(Level, Dir, Util)) ) , not(goal( atFloor(Level),dir(Dir) ))
+>>>>>>> jihong
 			do insert( bid(Level, Dir, Util) ).
 
 		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
@@ -93,15 +112,24 @@ event module {
 		% not stop by the other floor even thoug there is a request on route and it is added to the goal because it is executing
 		% goto action.
 		% //TODO arbitary service
+<<<<<<< HEAD
 		if bel( atFloor(Any) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
 			then insert( bid(L, D, 10) ).
+=======
+		if bel( atFloor(Any), Util is random(10), not(bid(L,D,Util)) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed) )
+			then insert( bid(L, D, Util) ).
+>>>>>>> jihong
 		
 		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
 		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, not(bid(1, up, Util)) )
 			then insert( bid(1, up, Util) ).
 		
 		% if arriving floor 10 and not full then accept people there
+<<<<<<< HEAD
 		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(10,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
+=======
+		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
+>>>>>>> jihong
 			then insert( bid(N, down, Util) ).
 		
 		
@@ -121,9 +149,16 @@ event module {
 			+ delete( received(manager, please_bid(Level, Dir)) )
 			+ delete( bid(Level, Dir, Util) ).
 		
+<<<<<<< HEAD
 		% delete bidding request from manager if there is no bid for this request
 %		forall bel( received(manager, please_bid(Level, Dir)), not(bid(Level, Dir, AnyUtil)) )
 %			do delete( received(manager, please_bid(Level, Dir)) ).
+=======
+		% send 0 utility bid and delete bidding request from manager if there is no bid for this request
+		forall bel( received(manager, please_bid(Level, Dir)), not(existABid(Level, Dir)) )
+			do (manager).sendonce(bid(Level, Dir, 0))
+			+ delete( received(manager, please_bid(Level, Dir)) ).
+>>>>>>> jihong
 		
 		
 		%%%%%%%%%%%%%%%% Bid Sending

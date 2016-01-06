@@ -9,16 +9,45 @@ init module{
 		% exist a bid higher than bid (X, Level,Dir,UtilX))
 		existHigherThan(X, Level,Dir,UtilX) :- bid(X, Level, Dir, UtilX), higherThan(_,X,Level,Dir).
 		% there does not exist a bid higher than the highest bid
+<<<<<<< HEAD
 		highest_bid(X, Level,Dir,UtilX) :- bid(X, Level, Dir, UtilX), not(existHigherThan(X, Level, Dir, UtilX)).
 		
+=======
+		highest_bid(X, Level,Dir,UtilX) :- auction(Level, Dir), bid(X, Level, Dir, UtilX), not(existHigherThan(X, Level, Dir, UtilX)).
+>>>>>>> jihong
 		
 		% exist a bid for the auction
 		existABid(Level, Dir) :- auction(Level, Dir), bid(AnyAgt, Level, Dir, AnyUtil).
 		
+<<<<<<< HEAD
 		% set agent priority for task assignment
 		priorTo(X,Z) :- priorTo(X,Y), priorTo(Y,Z), agent(X), agent(Y), agent(Z).
 		
 		
+=======
+		% exists one agent not bid
+		notAllBid(Level, Dir) :- auction(Level, Dir), agent(Agt), not(me(Agt)), not(hasBid(Agt, Level, Dir)).
+		
+		% set agent priority for task assignment
+		priorTo(X,Z) :- priorTo(X,Y), priorTo(Y,Z), agent(X), agent(Y), agent(Z).
+		
+		%%%%%%%%%%% doesn't work properly
+ 		% new an auction if there is does not exist
+%		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_], Level, Dir)).
+%		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_|_], Level, Dir)).
+ 		% add a bid to an exist auction
+ 		% If there is already one bid in the auction, put the higher bid in front of the lower one
+%		auction([X,Y], Level, Dir) :- auction([Y], Level, Dir), not(X=Y), higherThan(X,Y,Level,Dir). 	% do not need bid(Y,Level,Dir,UtilY),
+%		auction([Y,X], Level, Dir) :- auction([Y], Level, Dir), not(X=Y), higherThan(Y,X,Level,Dir). 	% bid(X,Level,Dir,UtilX) here
+ 		% If there are more than one bids, compare the new bid and the head of the old list (which is the highest) 
+ 		% and make the higher one as the new head
+%		auction([X,H|T], Level, Dir) :- auction([H|T], Level, Dir), not(member(X,[H|T])), higherThan(X,H,Level,Dir).
+%		auction([H,X|T], Level, Dir) :- auction([H|T], Level, Dir), not(member(X,[H|T])), higherThan(H,X,Level,Dir).
+ 		% find the highest bid of a auction (take the head)
+%		highest_bid(X, Level, Dir, UtilX) :- auction([X],Level,Dir), bid(X,Level,Dir,UtilX).
+%		highest_bid(X, Level, Dir, UtilX) :- auction([X|_],Level,Dir), bid(X,Level,Dir,UtilX).
+ 		%%%%%%%%%%%% end
+>>>>>>> jihong
 
 		
 		
@@ -60,6 +89,7 @@ event module {
 %			+ delete( received(Sender, not(atFloor(Level))) ).	% delete received messages
 		
 		% insert or delete "Level Floor's Dir button is on" when received from elevator agents.
+<<<<<<< HEAD
 		forall bel( received(Sender, fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) )
 			do insert( fButtonOn(Level,Dir) )
 			+ delete( received(Sender, fButtonOn(Level,Dir)) ).	% delete received messages 
@@ -69,6 +99,17 @@ event module {
 			+ delete( received(Sender, not(fButtonOn(Level,Dir))) )	% delete received messages
 			+ delete( served(Level, Dir) )
 			+ delete( requestSent(Level, Dir) ).	
+=======
+		forall bel( received(Sender, fButtonOn(Level,Dir)) )
+			do insert( fButtonOn(Level,Dir) )
+			+ delete( received(Sender, fButtonOn(Level,Dir)) ).	% delete received messages 
+			
+		forall bel(  received(Sender, not(fButtonOn(Level,Dir))), fButtonOn(Level,Dir), agent(Sender) )
+			do delete( fButtonOn(Level,Dir) )
+			+ delete( received(Sender, not(fButtonOn(Level,Dir))) )	% delete received messages
+			+ delete( served(Level, Dir) )
+			+ delete( requestSent(Level, Dir) ).
+>>>>>>> jihong
 		
 		% update "Sender's doorState" from Old to New
 %		forall bel( received(Sender, not(doorState(Old), doorState(New))) ) 
@@ -86,11 +127,16 @@ event module {
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Bids Management
 		% send auction
 		forall bel( agent(Receiver), not(me(Receiver)), auction(Level, Dir), not(requestSent(Level, Dir)) )
+<<<<<<< HEAD
 			do (Receiver).sendonce(please_bid(Level,Dir))
+=======
+			do (Receiver).send(please_bid(Level,Dir))
+>>>>>>> jihong
 			+ insert( requestSent(Level, Dir) ).
 
 		
 		%%%%% receive bids
+<<<<<<< HEAD
 
 		% accept the first bid for an auction
 		forall bel( received(Sender, bid(Level, Dir, Util)), auction(Level, Dir), not(existABid(Level,Dir)) )
@@ -111,6 +157,37 @@ event module {
 		%%%%% delete redundant bids
 		forall bel( highest_bid(Sender, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), Util > AnyUtil)
 			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  ).
+=======
+		
+		% accept the first bid for an auction
+		forall bel( received(Sender, bid(Level, Dir, Util)), auction(Level, Dir), not(existABid(Level,Dir)), not(me(Sender)) )
+			do delete( received(Sender, bid(Level, Dir, Util)) )
+			+ insert( bid(Sender, Level, Dir, Util) )
+			+ insert( hasBid(Sender, Level, Dir) ).
+			
+		% accept bid with different utility from the previous one (does not work)
+		forall bel( received(Sender, bid(Level, Dir, Util)), auction(Level, Dir), bid(OtherSender, Level, Dir, OtherUtil), Util \= OtherUtil, not(me(Sender)) )
+			do delete( received(Sender, bid(Level, Dir, Util)) )
+			+ insert( bid(Sender, Level, Dir, Util) )
+			+ insert( hasBid(Sender, Level, Dir) ).
+		
+		% reject bid with the same utility as the previous one (does not work)
+		forall bel( received(Sender, bid(Level, Dir, Util)), auction(Level, Dir), bid(OtherSender, Level, Dir, OtherUtil), Util = OtherUtil, not(me(Sender)) )
+			do delete( received(Sender, bid(Level, Dir, Util)) )
+			+ insert( hasBid(Sender, Level, Dir) ).
+			
+
+
+		
+%		%% find highest bid
+%		forall bel( auction(Level, Dir), bid(Agt, Level, Dir, Util), not(existHigherThan(Agt, Level, Dir, Util)) )
+%			do insert( highest_bid(Agt, Level, Dir, Util) ).
+		
+		%% delete redundant bids
+		forall bel( highest_bid(Sender, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), Util > AnyUtil)
+			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  ).
+%			+ delete( highest_bid(AnyAgt,Level,Dir,AnyUtil) ).
+>>>>>>> jihong
 			
 %		% keep only one highest bid if more than one exist based on the proiority of agents (does not work))
 %		forall bel( highest_bid(Receiver, Level, Dir, Util), AnyAgt \= Receiver, priorTo(Receiver, AnyAgt), highest_bid(AnyAgt, Level, Dir, Util)  )
@@ -122,14 +199,29 @@ event module {
 %			do delete( bid(OtherAgt, Level, Level, Util) ).
 
 		% assign task to the agent who bid highest
+<<<<<<< HEAD
 		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)))
+=======
+		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)), not(notAllBid(Level,Dir)) )
+>>>>>>> jihong
 			do (Receiver).sendonce( aim(Level, Dir) )
 				+ insert( served(Level, Dir) )
 				+ delete( highest_bid(Receiver, Level, Dir, Util) )
 				+ delete( bid(Receiver, Level, Dir, Util) ).
 				
+<<<<<<< HEAD
 		% //TODO Double check the request from passenger (fButtonOn) is served or not
 		% served(Level,Dir), requestSent(Level,Dir)
+=======
+		% delete hasBid information when one auction has been served
+		forall bel( served(Level, Dir), agent(Agt), not(me(Agt)) )
+			do delete( hasBid(Agt, Level, Dir) ).
+		
+		% Issue: Ghost 4th Floor	
+		% manager did not receive fButtonOn(4,down) from the elevator even though it was sent.
+		% //TODO Double check the request from passenger (fButtonOn) is served or not
+		% fButtonOn(Level,Dir), served(Level,Dir), requestSent(Level,Dir)
+>>>>>>> jihong
 		
 
 				

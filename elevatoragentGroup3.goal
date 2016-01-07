@@ -10,7 +10,7 @@ init module {
 		onRoute(Level, Dir) :- percept(carPosition(Here)), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
 		
 		% distance calculator
-		distance(Level, Dist) :- percept(carPosition(Here)), Dist is abs(Level-Here).
+		distance(Level, Dist) :- percept(carPosition(Here)), Dist is abs(Here-Level).
 		
 		% current available space
 		space(M) :- people(P), capacity(C), M is C-P.
@@ -18,8 +18,12 @@ init module {
 		% existABid
 		existABid(Level, Dir) :- bid(Level, Dir, AnyUtil).
 		
+		% Count current number of tasks
+		numOfTask(Count) :- aggregate_all(count, task(_,_), Count).
+		
+		
 		% Utility assignment -> Now move to main module
-%		bid(Level, Dir, Util) :- aim(Level,Dir), random_between(0,10, Util).
+%		bid(Level, Dir, Util) :- task(Level,Dir), random_between(0,10, Util).
 
 	}
 	beliefs{
@@ -62,6 +66,7 @@ main module {
 event module {
 	program {
 		%%%%% Communication Processing %%%%%
+
 		
 		% Percepts
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%% Not used by now
@@ -72,12 +77,20 @@ event module {
 %			do (manager).sendonce(not(atFloor(Level))).
 		
 		% Send "Level floor's Dir button is on" or "Level floor's Dir button is NOT on" to manager when percepts fButtonOn(Level,Dir) changes
-		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)), agent(manager), me(elevator) )
-			do (manager).sendonce(fButtonOn(Level,Dir))
+		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)), agent(manager) )
+			do insert( fButtonOn(Level,Dir) )
+			+ (manager).sendonce(fButtonOn(Level,Dir))
 			+ delete( sent(manager, fButtonOn(Level,Dir)) ).
-		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))), agent(manager), me(elevator)  )
-			do (manager).sendonce(not(fButtonOn(Level,Dir)))
+			
+		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))), agent(manager)  )
+			do delete( fButtonOn(Level,Dir) )
+			+ (manager).sendonce(not(fButtonOn(Level,Dir)))
 			+ delete( sent(manager, not(fButtonOn(Level,Dir))) ).
+		
+		forall bel( fButtonOn(Level, Dir), capacity(C), people(P), P = C, atFloor(Level), dir(Dir) )
+			do (manager).sendonce(contd(Level, Dir))
+			+ delete( sent(manager, contd(Level, Dir)) ).
+		% , doorState(opened)
 		
 		% Send doorState to manager when it changes
 %		forall bel( percept(doorState(New)), doorState(Old) ) do (manager).sendonce( not(doorState(Old)), doorState(New) ).
@@ -90,27 +103,28 @@ event module {
 		%%%%%%%%%%%%%%%% Bid Management and Utility Assignment
 		
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (M*(0.6)-Dist*(0.4)), not(bid(Level, Dir, Util)) ) , not(goal( atFloor(Level),dir(Dir) ))
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(5))), not(existABid(Level, Dir)) ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, Util) ).
 		% if there exists a bid, update it
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (M*(0.6)-Dist*(0.4)), bid(Level, Dir, AnyUtil), Util \= AnyUtil ) , not(goal( atFloor(Level),dir(Dir) ))
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(5))), bid(Level, Dir, AnyUtil), Util \= AnyUtil ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, Util) )
 			+ delete( bid(Level, Dir, AnyUtil) ).
+		
 
 		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
 		% '6353' case, it is fButtonOn(9,down). Then the agent will 'goto' Level 9 as it is the only goal it has. The agent will
 		% not stop by the other floor even thoug there is a request on route and it is added to the goal because it is executing
 		% goto action.
 		% //TODO arbitary service
-		if bel( fButtonOn(L,D), atFloor(Any), doorState(closed), not(bid(L,D,Util)), distance(L, Dist), Util is (10-Dist) ), not(goal( atFloor(AnyL) ))
-			then insert( bid(L, D, Util) ).
+		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F-Dist), not(existABid(Level, Dir)) ), not(goal( atFloor(AnyL) ))
+			do insert( bid(L, D, Util) ).
 		% if there exists a bid, update it
-		if bel( fButtonOn(L,D), atFloor(Any), doorState(closed), bid(L,D,AnyUtil), distance(L, Dist), Util is (10-Dist), Util \= AnyUtil ), not(goal( atFloor(AnyL) ))
-			then insert( bid(L, D, Util) )
+		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F-Dist), bid(L,D,AnyUtil), Util \= AnyUtil ), not(goal( atFloor(AnyL) ))
+			do insert( bid(L, D, Util) )
 			+ delete( bid(L,D,AnyUtil) ).
 			
 		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
-		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, not(bid(1, up, Util)) )
+		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, not(existABid(1, up)) )
 			then insert( bid(1, up, Util) ).
 		% if there exists a bid, update it
 		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, bid(1, up, AnyUtil), Util \= AnyUtil )
@@ -118,7 +132,7 @@ event module {
 			+ delete( bid(1, up, AnyUtil) ).
 		
 		% if arriving floor N and not full then accept people there
-		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
+		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, not(existABid(N, down)) )
 			then insert( bid(N, down, Util) ).
 		% if there exists a bid, update it
 		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, bid(N, down, AnyUtil), Util \= AnyUtil )
@@ -138,7 +152,6 @@ event module {
 		% send the bid as the manager's request 
 		forall bel( received(manager, please_bid(Level, Dir)), bid(Level, Dir, Util) )
 			do (manager).sendonce(bid(Level, Dir, Util))
-%			+ delete( aim(Level, Dir) ) % OLD aim management
 			+ delete( received(manager, please_bid(Level, Dir)) )
 			+ delete( bid(Level, Dir, Util) )
 			+ delete( sent(manager, bid(Level, Dir, Util)) ).
@@ -152,23 +165,31 @@ event module {
 		% send the bid once again as the manager's request 
 		forall bel( received(manager, please_bid_once_again(Level, Dir)), bid(Level, Dir, Util) )
 			do (manager).sendonce(bid(Level, Dir, Util))
-%			+ delete( aim(Level, Dir) ) % OLD aim management
-			+ delete( received(manager, please_bid(Level, Dir)) )
+			+ delete( received(manager, please_bid_once_again(Level, Dir)) )
 			+ delete( bid(Level, Dir, Util) )
 			+ delete( sent(manager, bid(Level, Dir, Util)) ).
 		
+		% send nothing if no bid when receive bidding request once again
+		forall bel( received(manager, please_bid_once_again(Level, Dir)), not(existABid(Level, Dir)) )
+			do (manager).sendonce(bid(Level, Dir, 0))
+			+ delete( received(manager, please_bid_once_again(Level, Dir)) )
+			+ delete( sent(manager, bid(Level, Dir, 0)) ).
 		
-		%%%%%%%%%%%%%%%% Bid Sending
-%		forall bel( bid(Level, Dir, Util), agent(manager), not(me(manager))  )
-%			do (manager).sendonce( bid(Level, Dir, Util) )
-%			+ delete( aim(Level, Dir) )
-%			+ delete( bid(Level, Dir, Util) )
-%			+ delete( sent(manager, bid(Level, Dir, Util)) ).
 
 		%%%%%%%%%%%%%%%% Goal receiving
-		forall bel( received(manager, aim(Level, Dir)) )
-			do delete( received(manager, aim(Level, Dir)) )
-			+ adopt( atFloor(Level), dir(Dir) ).
+		% receive task (or task) from the manager
+		forall bel( received(manager, task(Level, Dir)) )
+			do delete( received(manager, task(Level, Dir)) )
+			+ adopt( atFloor(Level), dir(Dir) )
+			+ insert( task(Level, Dir) ).
+		
+		% delete completed tasks
+		forall bel( atFloor(Level), dir(Dir), Level \= 1, Dir \= down ) 
+			do delete( task(Level, Dir)).
+		
+		% test
+%		forall bel( numOfTask(N) )
+%			do print( numOfTask(N) ).
 		
 		
 		%%%%% Percept Processing %%%%%
@@ -179,8 +200,8 @@ event module {
 		forall bel( atFloor(Level), not(percept(atFloor(Level))) ) do delete( atFloor(Level) ).
 				
 		% The fButton(Level,Dir) percept indicates that the up or down (Dir) button on floor Level has been pressed.
-		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) ) do insert( fButtonOn(Level,Dir) ).
-		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) ) do delete( fButtonOn(Level,Dir) ).
+%		forall bel( percept(fButtonOn(Level,Dir)), not(fButtonOn(Level,Dir)) ) do insert( fButtonOn(Level,Dir) ).
+%		forall bel( fButtonOn(Level,Dir), not(percept(fButtonOn(Level,Dir))) ) do delete( fButtonOn(Level,Dir) ).
 		
 		% The eButtonOn(Level) percept indicate the level button in the elevator has been pressed		
 		forall bel( percept(eButtonOn(Level)), not(eButtonOn(Level)) ) do insert( eButtonOn(Level) ).
@@ -214,7 +235,9 @@ event module {
 		% The eButton(Level) percept is received when the elevator button on floor Level has been pressed.
 		% In that case, the agent will adopt a goal to service that floor. It is ASSUMED that a button for a floor is
 		% pressed that is "on route", i.e. in the direction the elevator is currently travelling.
-		forall bel( percept(eButtonOn(Level)), dir(Dir) ) do adopt( atFloor(Level), dir(Dir) ).
+		forall bel( percept(eButtonOn(Level)), dir(Dir) ) 
+			do adopt( atFloor(Level), dir(Dir) )
+			+ insert( task(Level, Dir) ).
 
 		% If there are no current goals to pursue, then adopt a goal to service an arbitrary floor for
 		% which a floor button has been pressed that is not already being serviced.

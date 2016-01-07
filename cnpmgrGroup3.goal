@@ -106,6 +106,13 @@ event module {
 			do (Receiver).sendonce(please_bid(Level,Dir))
 			+ insert( requestSent(Level, Dir) )
 			+ delete( sent(Receiver, please_bid(Level,Dir)) ).
+		
+		% send the auction for another time if all the elevators bid with Util 0
+		forall bel( highest_bid(Agt, Level, Dir, Util), bid(Agt, Level, Dir, Util), Util = 0, not(notAllBid(Level,Dir)),  agent(Receiver), not(me(Receiver)), not(served(Level, Dir)) )
+			do (Receiver).sendonce(please_bid_once_again(Level,Dir))
+%			+ delete( hasBid(Receiver, Level, Dir) )
+			+ insert( requestSent(Level, Dir) )
+			+ delete( sent(Receiver, please_bid_once_again(Level,Dir)) ).
 
 		
 		%%%%% receive bids
@@ -121,12 +128,13 @@ event module {
 			do delete( received(Sender, bid(Level, Dir, Util)) )
 			+ insert( bid(Sender, Level, Dir, Util) )
 			+ insert( hasBid(Sender, Level, Dir) ).
-		
+
 		% reject bid with the same utility as the previous one (does not work)
 		forall bel( received(Sender, bid(Level, Dir, Util)), auction(Level, Dir), bid(OtherSender, Level, Dir, OtherUtil), Util = OtherUtil, not(me(Sender)) )
 			do delete( received(Sender, bid(Level, Dir, Util)) )
 			+ insert( hasBid(Sender, Level, Dir) ).
-			
+
+
 
 
 		
@@ -136,8 +144,8 @@ event module {
 		
 		%% delete redundant bids
 		forall bel( highest_bid(Sender, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), Util > AnyUtil)
-			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  ).
-%			+ delete( highest_bid(AnyAgt,Level,Dir,AnyUtil) ).
+			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  )
+			+ delete( highest_bid(AnyAgt,Level,Dir,AnyUtil) ).
 			
 %		% keep only one highest bid if more than one exist based on the proiority of agents (does not work))
 %		forall bel( highest_bid(Receiver, Level, Dir, Util), AnyAgt \= Receiver, priorTo(Receiver, AnyAgt), highest_bid(AnyAgt, Level, Dir, Util)  )
@@ -148,13 +156,14 @@ event module {
 %		forall bel( bid(AnyAgt, Level, Dir, Util), bid(OtherAgt, Level, Level, Util), OtherAgt \= AnyAgt )
 %			do delete( bid(OtherAgt, Level, Level, Util) ).
 
-		% assign task to the agent who bid highest
-		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), agent(Receiver), not(me(Receiver)), not(notAllBid(Level,Dir)) )
+		% assign task to the agent who bid the highest
+		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), Util \= 0, agent(Receiver), not(me(Receiver)), not(notAllBid(Level,Dir)) )
 			do (Receiver).sendonce( aim(Level, Dir) )
 				+ insert( served(Level, Dir) )
 				+ delete( highest_bid(Receiver, Level, Dir, Util) )
 				+ delete( bid(Receiver, Level, Dir, Util) )
 				+ delete( sent(Receiver, aim(Level, Dir)) ).
+		
 				
 		% delete hasBid information when one auction has been served
 		forall bel( served(Level, Dir), agent(Agt), not(me(Agt)) )

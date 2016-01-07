@@ -29,7 +29,7 @@ init module {
 		atFloor(1).
 		dir(down).
 		% Initially, it is unknown whether doors are open or closed.
-		doorState(unknown).
+		doorState(closed).
 		% Initially, no people in the elevator.
 		people(0).
 	}
@@ -92,22 +92,38 @@ event module {
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
 		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (M*(0.6)-Dist*(0.4)), not(bid(Level, Dir, Util)) ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, Util) ).
+		% if there exists a bid, update it
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), Util is (M*(0.6)-Dist*(0.4)), bid(Level, Dir, AnyUtil), Util \= AnyUtil ) , not(goal( atFloor(Level),dir(Dir) ))
+			do insert( bid(Level, Dir, Util) )
+			+ delete( bid(Level, Dir, AnyUtil) ).
 
 		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
 		% '6353' case, it is fButtonOn(9,down). Then the agent will 'goto' Level 9 as it is the only goal it has. The agent will
 		% not stop by the other floor even thoug there is a request on route and it is added to the goal because it is executing
 		% goto action.
 		% //TODO arbitary service
-		if bel( atFloor(Any), not(bid(L,D,Util)) ), not(goal( atFloor(AnyL) )), bel( fButtonOn(L,D), doorState(closed), distance(L, Dist), Util is (Dist) )
+		if bel( fButtonOn(L,D), atFloor(Any), doorState(closed), not(bid(L,D,Util)), distance(L, Dist), Util is (10-Dist) ), not(goal( atFloor(AnyL) ))
 			then insert( bid(L, D, Util) ).
-		
+		% if there exists a bid, update it
+		if bel( fButtonOn(L,D), atFloor(Any), doorState(closed), bid(L,D,AnyUtil), distance(L, Dist), Util is (10-Dist), Util \= AnyUtil ), not(goal( atFloor(AnyL) ))
+			then insert( bid(L, D, Util) )
+			+ delete( bid(L,D,AnyUtil) ).
+			
 		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
 		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, not(bid(1, up, Util)) )
 			then insert( bid(1, up, Util) ).
+		% if there exists a bid, update it
+		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, bid(1, up, AnyUtil), Util \= AnyUtil )
+			then insert( bid(1, up, Util) )
+			+ delete( bid(1, up, AnyUtil) ).
 		
-		% if arriving floor 10 and not full then accept people there
+		% if arriving floor N and not full then accept people there
 		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, not(bid(N, down, Util)) )
 			then insert( bid(N, down, Util) ).
+		% if there exists a bid, update it
+		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, bid(N, down, AnyUtil), Util \= AnyUtil )
+			then insert( bid(N, down, Util) )
+			+ delete( bid(N, down, AnyUtil) ).
 		
 		
 		% delete redundant bids
@@ -122,7 +138,7 @@ event module {
 		% send the bid as the manager's request 
 		forall bel( received(manager, please_bid(Level, Dir)), bid(Level, Dir, Util) )
 			do (manager).sendonce(bid(Level, Dir, Util))
-			+ delete( aim(Level, Dir) ) % OLD aim management
+%			+ delete( aim(Level, Dir) ) % OLD aim management
 			+ delete( received(manager, please_bid(Level, Dir)) )
 			+ delete( bid(Level, Dir, Util) )
 			+ delete( sent(manager, bid(Level, Dir, Util)) ).
@@ -132,6 +148,14 @@ event module {
 			do (manager).sendonce(bid(Level, Dir, 0))
 			+ delete( received(manager, please_bid(Level, Dir)) )
 			+ delete( sent(manager, bid(Level, Dir, 0)) ).
+		
+		% send the bid once again as the manager's request 
+		forall bel( received(manager, please_bid_once_again(Level, Dir)), bid(Level, Dir, Util) )
+			do (manager).sendonce(bid(Level, Dir, Util))
+%			+ delete( aim(Level, Dir) ) % OLD aim management
+			+ delete( received(manager, please_bid(Level, Dir)) )
+			+ delete( bid(Level, Dir, Util) )
+			+ delete( sent(manager, bid(Level, Dir, Util)) ).
 		
 		
 		%%%%%%%%%%%%%%%% Bid Sending

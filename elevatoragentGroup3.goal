@@ -7,7 +7,7 @@ init module {
 
 		% trying to fix the 'official' bug in the Assignment 1: onRoute only succeeds when the elevator car is "docked"
 		% use percept(carPosition(Here)) instead of atFloor(Here)
-		onRoute(Level, Dir) :- percept(carPosition(Here)), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
+		onRoute(Level, Dir) :- atFloor(Here), dir(Dir), Diff is Level-Here, (Diff<0 -> Dir=down; Dir=up).
 		
 		% distance calculator
 		distance(Level, Dist) :- percept(carPosition(Here)), Dist is abs(Here-Level).
@@ -70,6 +70,11 @@ event module {
 		
 		% Percepts
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%% Not used by now
+		
+		% send manager I am an agent
+%		if bel( agent(manager), me(Agt), not(me(manager)) )
+%			then (manager).sendonce( agent(Agt) ).
+		
 		% Send "I am at floor Level" or "I am NOT at floor level" to manager when percepts atFloor(Level) changes
 %		forall bel( agent(manager), not(me(manager)), percept(atFloor(Level)), not(atFloor(Level)) )
 %			do (manager).sendonce(atFloor(Level)).
@@ -116,10 +121,10 @@ event module {
 		% not stop by the other floor even thoug there is a request on route and it is added to the goal because it is executing
 		% goto action.
 		% //TODO arbitary service
-		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F-Dist), not(existABid(Level, Dir)) ), not(goal( atFloor(AnyL) ))
+		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*100-Dist), not(existABid(Level, Dir)) ), not(goal( atFloor(AnyL) ))
 			do insert( bid(L, D, Util) ).
 		% if there exists a bid, update it
-		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F-Dist), bid(L,D,AnyUtil), Util \= AnyUtil ), not(goal( atFloor(AnyL) ))
+		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*100-Dist), bid(L,D,AnyUtil), Util \= AnyUtil ), not(goal( atFloor(AnyL) ))
 			do insert( bid(L, D, Util) )
 			+ delete( bid(L,D,AnyUtil) ).
 			
@@ -184,9 +189,10 @@ event module {
 			+ insert( task(Level, Dir) ).
 		
 		% delete completed tasks
-		forall bel( atFloor(Level), dir(Dir), Level \= 1, Dir \= down ) 
-			do delete( task(Level, Dir)).
-		
+		forall bel( task(Level, Dir), atFloor(Level), dir(Dir), Level \= 1, Dir \= down ) 
+			do delete( task(Level, Dir) ).
+		forall bel( task(Level, Dir), not(fButtonOn(Level,Dir)))
+			do delete( task(Level, Dir) ).
 		% test
 %		forall bel( numOfTask(N) )
 %			do print( numOfTask(N) ).

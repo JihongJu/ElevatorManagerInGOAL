@@ -15,7 +15,7 @@ init module{
 		existABid(Level, Dir) :- auction(Level, Dir), bid(AnyAgt, Level, Dir, AnyUtil).
 		
 		% exists one agent not send bidding request
-		notAllReqSent(Level, Dir) :- auction(Level, Dir), agent(Agt), not(me(Agt)), not(requestSent(Agt, Level, Dir)).
+%		notAllReqSent(Level, Dir) :- auction(Level, Dir), agent(Agt), not(me(Agt)), not(requestSent(Agt, Level, Dir)).
 		
 		% exists one agent not bid
 		notAllBid(Level, Dir) :- auction(Level, Dir), agent(Agt), not(me(Agt)), not(hasBid(Agt, Level, Dir)).
@@ -29,22 +29,6 @@ init module{
 		selectAgt([], []).
 		selectAgt(List, Elt) :- length(List, Length), random(0, Length, Index), nth0(Index, List, Elt).
 		
-		%%%%%%%%%%% doesn't work properly
- 		% new an auction if there is does not exist
-%		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_], Level, Dir)).
-%		auction([X], Level, Dir) :- bid(X,Level,Dir,UtilA), not(auction([_|_], Level, Dir)).
- 		% add a bid to an exist auction
- 		% If there is already one bid in the auction, put the higher bid in front of the lower one
-%		auction([X,Y], Level, Dir) :- auction([Y], Level, Dir), not(X=Y), higherThan(X,Y,Level,Dir). 	% do not need bid(Y,Level,Dir,UtilY),
-%		auction([Y,X], Level, Dir) :- auction([Y], Level, Dir), not(X=Y), higherThan(Y,X,Level,Dir). 	% bid(X,Level,Dir,UtilX) here
- 		% If there are more than one bids, compare the new bid and the head of the old list (which is the highest) 
- 		% and make the higher one as the new head
-%		auction([X,H|T], Level, Dir) :- auction([H|T], Level, Dir), not(member(X,[H|T])), higherThan(X,H,Level,Dir).
-%		auction([H,X|T], Level, Dir) :- auction([H|T], Level, Dir), not(member(X,[H|T])), higherThan(H,X,Level,Dir).
- 		% find the highest bid of a auction (take the head)
-%		highest_bid(X, Level, Dir, UtilX) :- auction([X],Level,Dir), bid(X,Level,Dir,UtilX).
-%		highest_bid(X, Level, Dir, UtilX) :- auction([X|_],Level,Dir), bid(X,Level,Dir,UtilX).
- 		%%%%%%%%%%%% end
 
 		
 		
@@ -78,16 +62,6 @@ event module {
 		
 		% update beliefs from elevator agents' percepts
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%% not used by now
-		% insert "Sender is at floor Lever" whenever received from Sender at floor Level and delete whenever
-		% received from Sendor not at floor Level
-		% agtAtFloor True if agent Agt is at floor Level.
-%		forall bel( received(Sender, atFloor(Level)), not(agtAtFloor(Sender, Level)) ) 
-%			do insert( agtAtFloor(Sender, Level) )
-%			+ delete( received(Sender, atFloor(Level)) ).	% delete received messages 
-					
-%		forall bel( agtAtFloor(Sender, Level), received(Sender, not(atFloor(Level))) )
-%			do delete( agtAtFloor(Sender, Level) )
-%			+ delete( received(Sender, not(atFloor(Level))) ).	% delete received messages
 		
 		% insert or delete "Level Floor's Dir button is on" when received from elevator agents.
 		forall bel( received(Sender, fButtonOn(Level,Dir)) )
@@ -99,18 +73,6 @@ event module {
 			+ delete( received(Sender, not(fButtonOn(Level,Dir))) )	% delete received messages
 			+ delete( served(Level, Dir) ).
 		
-		% update "Sender's doorState" from Old to New
-%		forall bel( received(Sender, not(doorState(Old), doorState(New))) ) 
-%				do insert( not(elevDoorState(Sender,Old)), elevDoorState(Sender, New) )
-%				+ delete( received(Sender, not(doorState(Old), doorState(New))) ).	% delete received messages //TODO probably don't need
-		
-		% insert or delte "Sender is going direction Dir" when received from elevators
-%		forall bel( received(Sender, dir(Dir)), not(agtDir(Sender, Dir)) )
-%			do insert( agtDir(Sender,Dir) )
-%			+ delete(received(Sender, dir(Dir))).	% delete received messages
-%		forall bel( agtDir(Sender, Dir), received(Sender, not(dir(Dir))) )
-%			do delete( agtDir(Sender,Dir) )
-%			+ delete( received(Sender, not(dir(Dir))) ). 	% delete received messages //TODO probably don't need
 			
 		%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Bids Management
 		% send auction. requestSent help manage bidding request and hasbid help handle response from the elevators
@@ -125,12 +87,15 @@ event module {
 			+ insert( requestSent(Receiver, Level, Dir) )
 			+ delete( sent(Receiver, please_bid_once_again(Level,Dir)) ).
 		
+		% delete served information if received continue the auction command from the elevators
 		forall bel( received(Sender, contd(Level, Dir)) )
 			do delete( served(Level, Dir) )
 			+ delete( received(Sender, contd(Level, Dir)) ).
 
 		
 		%%%%% receive bids
+		
+		%%%%% hasbid help the manager check if all the elevators bid. Only when all the elevator bid will the manager assign the task to the one who bid highest.
 		
 		% accept the first bid for an auction
 		forall bel( received(Sender, bid(Level, Dir, Util)), auction(Level, Dir), not(existABid(Level,Dir)), not(me(Sender)) )
@@ -158,19 +123,16 @@ event module {
 			do delete( received(Sender, bid(Level, Dir, Util)) )
 			+ delete( requestSent(Sender, Level, Dir) ).
 
-		%% find highest bid
-%		forall bel( auction(Level, Dir), bid(Agt, Level, Dir, Util), not(existHigherThan(Agt, Level, Dir, Util)) )
-%			do insert( highest_bid(Agt, Level, Dir, Util) ).
 		
-		%% delete redundant bids
+		%%%% delete redundant bids %%%%
 		forall bel( highest_bid(Sender, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), Util > AnyUtil)
 			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  )
 			+ delete( highest_bid(AnyAgt,Level,Dir,AnyUtil) ).
 		
-		
+		% delete bids if there is no auction for it
 		forall bel( bid(Agt, Level, Dir, Util), not(auction(Level, Dir)) )
 			do delete( bid(Agt, Level, Dir, Util) ).
-		
+		% delete hasbid if there is no auction for it
 		forall bel( hasBid(Agt, Level, Dir), not(auction(Level, Dir)) )
 			do delete( hasBid(Agt, Level, Dir) ).
 			
@@ -181,10 +143,6 @@ event module {
 			then delete( bid(AnyAgt, Level, Dir, Util) )
 			+ delete( highest_bid(AnyAgt, Level, Dir, Util) )
 			+ log(deleted).
-
-%		forall bel( auction(Level, Dir), hasSameBid(Level, Dir))
-%			do print( hasSameBid(Level, Dir) ).
-		
 		
 
 		% assign task to the agent who bid the highest
@@ -202,17 +160,7 @@ event module {
 			do delete( hasBid(Agt, Level, Dir) ).
 		
 
-
 		
-%		
-		
-		% Issue: Ghost 4th Floor	
-		% manager did not receive fButtonOn(4,down) from the elevator even though it was sent.
-		% //TODO Double check the request from passenger (fButtonOn) is served or not
-		% fButtonOn(Level,Dir), served(Level,Dir), requestSent(Level,Dir)
-		
-
-				
 		
 	}
 }

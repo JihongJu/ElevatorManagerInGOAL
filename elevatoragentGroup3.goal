@@ -33,7 +33,7 @@ init module {
 		atFloor(1).
 		dir(down).
 		% Initially, it is unknown whether doors are open or closed.
-		doorState(closed).
+		doorState(unknown).
 		% Initially, no people in the elevator.
 		people(0).
 	}
@@ -62,8 +62,8 @@ main module {
 		then goto(Level, Dir).
 		
 		% bidding at intial state
-		forall bel( atFloor(1), dir(down), doorState(closed), fButtonOn(Level,Dir), not(existABid(Level,Dir)), distance(Level, Dist), floorCount(F), Util is (200-Dist)), not(goal( atFloor(AnyL) ))
-			do insert( bid(Level, Dir, Util) ).
+%		forall bel( atFloor(1), dir(down), doorState(closed), fButtonOn(Level,Dir), not(existABid(Level,Dir)), distance(Level, Dist), floorCount(F), Util is (200-Dist)), not(goal( atFloor(AnyL) ))
+%			do insert( bid(Level, Dir, Util) ).
 	}
 }
 	
@@ -96,10 +96,11 @@ event module {
 			+ (manager).sendonce(not(fButtonOn(Level,Dir)))
 			+ delete( sent(manager, not(fButtonOn(Level,Dir))) ).
 		
+		% If the elevator cannot serve all the passenger at one floor, send a message to the manager and restart the auction.
 		forall bel( fButtonOn(Level, Dir), capacity(C), people(P), P = C, atFloor(Level), dir(Dir) )
 			do (manager).sendonce(contd(Level, Dir))
 			+ delete( sent(manager, contd(Level, Dir)) ).
-		% , doorState(opened)
+
 		
 		% Send doorState to manager when it changes
 %		forall bel( percept(doorState(New)), doorState(Old) ) do (manager).sendonce( not(doorState(Old)), doorState(New) ).
@@ -111,41 +112,41 @@ event module {
 		
 		%%%%%%%%%%%%%%%% Bid Management and Utility Assignment
 		
-		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(10))), not(existABid(Level, Dir)) ) , not(goal( atFloor(Level),dir(Dir) ))
+		% fButtonOn and onRoute, if it is already in goal, do not insert
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(5))), not(existABid(Level, Dir)) ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, Util) ).
 		% if there exists a bid, update it
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(10))), bid(Level, Dir, AnyUtil), Util \= AnyUtil ) , not(goal( atFloor(Level),dir(Dir) ))
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(5))), bid(Level, Dir, AnyUtil), Util \= AnyUtil ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, Util) )
 			+ delete( bid(Level, Dir, AnyUtil) ).
 		
 
 		% Problem discussed in Assignment 1 here: When the agent is idle, it will serve an arbitary request. In the RandomSeed
 		% '6353' case, it is fButtonOn(9,down). Then the agent will 'goto' Level 9 as it is the only goal it has. The agent will
-		% not stop by the other floor even thoug there is a request on route and it is added to the goal because it is executing
-		% goto action.
-		% //TODO arbitary service
-		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*10-Dist), not(existABid(Level, Dir)) ), not(goal( atFloor(AnyL) ))
+		% not stop by the other floor even thoug there is a request on route and it will not added to the goal. Even though the 
+		% are adopted, the elevator will not stop because it is performing the goto(9,down) action.
+		% when the elevator is idle
+		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*15-Dist) ), not(goal( atFloor(AnyL) ))
 			do insert( bid(L, D, Util) ).
 		% if there exists a bid, update it
-		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*10-Dist), bid(L,D,AnyUtil), Util \= AnyUtil ), not(goal( atFloor(AnyL) ))
+		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*15-Dist), existABid(Level, Dir), bid(L,D,AnyUtil), Util \= AnyUtil ), not(goal( atFloor(AnyL) ))
 			do insert( bid(L, D, Util) )
 			+ delete( bid(L,D,AnyUtil) ).
 			
 		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
-		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 200, not(existABid(1, up)) )
-			then insert( bid(1, up, Util) ).
+		forall bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 200, not(existABid(1, up)) )
+			do insert( bid(1, up, Util) ).
 		% if there exists a bid, update it
-		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 200, bid(1, up, AnyUtil), Util \= AnyUtil )
-			then insert( bid(1, up, Util) )
+		forall bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 200, bid(1, up, AnyUtil), Util \= AnyUtil )
+			do insert( bid(1, up, Util) )
 			+ delete( bid(1, up, AnyUtil) ).
 		
 		% if arriving floor N and not full then accept people there
-		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 200, not(existABid(N, down)) )
-			then insert( bid(N, down, Util) ).
+		forall bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 200, not(existABid(N, down)) )
+			do insert( bid(N, down, Util) ).
 		% if there exists a bid, update it
-		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 200, bid(N, down, AnyUtil), Util \= AnyUtil )
-			then insert( bid(N, down, Util) )
+		forall bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 200, bid(N, down, AnyUtil), Util \= AnyUtil )
+			do insert( bid(N, down, Util) )
 			+ delete( bid(N, down, AnyUtil) ).
 			
 		
@@ -247,6 +248,7 @@ event module {
 		% The eButton(Level) percept is received when the elevator button on floor Level has been pressed.
 		% In that case, the agent will adopt a goal to service that floor. It is ASSUMED that a button for a floor is
 		% pressed that is "on route", i.e. in the direction the elevator is currently travelling.
+		% also insert task to bel
 		forall bel( percept(eButtonOn(Level)), dir(Dir) ) 
 			do adopt( atFloor(Level), dir(Dir) )
 			+ insert( task(Level, Dir) ).

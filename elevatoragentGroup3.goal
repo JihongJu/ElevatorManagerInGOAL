@@ -60,6 +60,10 @@ main module {
 		    not(a-goal( atFloor(OtherLevel),
 				OtherDistance is abs(OtherLevel-Here), OtherDistance<Distance) )
 		then goto(Level, Dir).
+		
+		% bidding at intial state
+		forall bel( atFloor(1), dir(down), doorState(closed), fButtonOn(Level,Dir), not(existABid(Level,Dir)), distance(Level, Dist), floorCount(F), Util is (200-Dist)), not(goal( atFloor(AnyL) ))
+			do insert( bid(Level, Dir, Util) ).
 	}
 }
 	
@@ -108,10 +112,10 @@ event module {
 		%%%%%%%%%%%%%%%% Bid Management and Utility Assignment
 		
 		% //TODO fButtonOn onRoute, if it is already in goal, do not insert
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(5))), not(existABid(Level, Dir)) ) , not(goal( atFloor(Level),dir(Dir) ))
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(10))), not(existABid(Level, Dir)) ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, Util) ).
 		% if there exists a bid, update it
-		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(5))), bid(Level, Dir, AnyUtil), Util \= AnyUtil ) , not(goal( atFloor(Level),dir(Dir) ))
+		forall bel( fButtonOn(Level, Dir), onRoute(Level, Dir), distance(Level, Dist), space(M), numOfTask(T), Util is (M*(10)-(Dist+T*(10))), bid(Level, Dir, AnyUtil), Util \= AnyUtil ) , not(goal( atFloor(Level),dir(Dir) ))
 			do insert( bid(Level, Dir, Util) )
 			+ delete( bid(Level, Dir, AnyUtil) ).
 		
@@ -121,28 +125,30 @@ event module {
 		% not stop by the other floor even thoug there is a request on route and it is added to the goal because it is executing
 		% goto action.
 		% //TODO arbitary service
-		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*100-Dist), not(existABid(Level, Dir)) ), not(goal( atFloor(AnyL) ))
+		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*10-Dist), not(existABid(Level, Dir)) ), not(goal( atFloor(AnyL) ))
 			do insert( bid(L, D, Util) ).
 		% if there exists a bid, update it
-		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*100-Dist), bid(L,D,AnyUtil), Util \= AnyUtil ), not(goal( atFloor(AnyL) ))
+		forall bel( fButtonOn(L,D), atFloor(Any), doorState(closed), distance(L, Dist), floorCount(F), Util is (F*10-Dist), bid(L,D,AnyUtil), Util \= AnyUtil ), not(goal( atFloor(AnyL) ))
 			do insert( bid(L, D, Util) )
 			+ delete( bid(L,D,AnyUtil) ).
 			
 		% if arriving floor 1 and not full then accept people there. Fix ignorance problem due to direction conflict.
-		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, not(existABid(1, up)) )
+		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 200, not(existABid(1, up)) )
 			then insert( bid(1, up, Util) ).
 		% if there exists a bid, update it
-		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 100, bid(1, up, AnyUtil), Util \= AnyUtil )
+		if bel( atFloor(1), dir(down), fButtonOn(1,up), capacity(C), not(people(C)), Util is 200, bid(1, up, AnyUtil), Util \= AnyUtil )
 			then insert( bid(1, up, Util) )
 			+ delete( bid(1, up, AnyUtil) ).
 		
 		% if arriving floor N and not full then accept people there
-		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, not(existABid(N, down)) )
+		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 200, not(existABid(N, down)) )
 			then insert( bid(N, down, Util) ).
 		% if there exists a bid, update it
-		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 100, bid(N, down, AnyUtil), Util \= AnyUtil )
+		if bel( floorCount(N), atFloor(N), dir(up), fButtonOn(N,down), capacity(C), not(people(C)), Util is 200, bid(N, down, AnyUtil), Util \= AnyUtil )
 			then insert( bid(N, down, Util) )
 			+ delete( bid(N, down, AnyUtil) ).
+			
+		
 		
 		
 		% delete redundant bids

@@ -63,48 +63,6 @@ init module{
 main module{
 	program {
 		
-		%% find highest bid
-%		forall bel( auction(Level, Dir), bid(Agt, Level, Dir, Util), not(existHigherThan(Agt, Level, Dir, Util)) )
-%			do insert( highest_bid(Agt, Level, Dir, Util) ).
-		
-		%% delete redundant bids
-		forall bel( highest_bid(Sender, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), Util > AnyUtil)
-			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  )
-			+ delete( highest_bid(AnyAgt,Level,Dir,AnyUtil) ).
-		
-		
-		forall bel( bid(Agt, Level, Dir, Util), not(auction(Level, Dir)) )
-			do delete( bid(Agt, Level, Dir, Util) ).
-		
-		forall bel( hasBid(Agt, Level, Dir), not(auction(Level, Dir)) )
-			do delete( hasBid(Agt, Level, Dir) ).
-			
-		
-		% if more than one highest bids exist, delete the redundant ones and keep only one left (may receive during the same cycle)
-		if bel( auction(Level, Dir), hasSameBid(Level, Dir), bid(Agt, Level, Dir, Util), bid(OtherAgt, Level, Dir, OtherUtil), 
-					highest_bid(Agt, Level, Dir, Util), highest_bid(OtherAgt, Level, Dir, Util), OtherAgt \= Agt, OtherUtil = Util, selectAgt([Agt, OtherAgt], AnyAgt))
-			then delete( bid(AnyAgt, Level, Dir, Util) )
-			+ delete( highest_bid(AnyAgt, Level, Dir, Util) )
-			+ log(deleted).
-
-%		forall bel( auction(Level, Dir), hasSameBid(Level, Dir))
-%			do print( hasSameBid(Level, Dir) ).
-		
-		
-
-		% assign task to the agent who bid the highest
-		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), Util > 0, not(hasSameBid(Level, Dir)),
-				agent(Receiver), not(me(Receiver)), not(notAllBid(Level,Dir)) )
-			do (Receiver).sendonce( task(Level, Dir) )
-				+ insert( served(Level, Dir) )
-				+ delete( highest_bid(Receiver, Level, Dir, Util) )
-				+ delete( bid(Receiver, Level, Dir, Util) )
-				+ delete( sent(Receiver, task(Level, Dir)) ).
-		
-				
-		% delete hasBid information when one auction has been served
-		forall bel( served(Level, Dir), agent(Agt), not(me(Agt)) )
-			do delete( hasBid(Agt, Level, Dir) ).
 		
 
 	}
@@ -200,7 +158,49 @@ event module {
 			do delete( received(Sender, bid(Level, Dir, Util)) )
 			+ delete( requestSent(Sender, Level, Dir) ).
 
+		%% find highest bid
+%		forall bel( auction(Level, Dir), bid(Agt, Level, Dir, Util), not(existHigherThan(Agt, Level, Dir, Util)) )
+%			do insert( highest_bid(Agt, Level, Dir, Util) ).
+		
+		%% delete redundant bids
+		forall bel( highest_bid(Sender, Level, Dir, Util), bid(AnyAgt, Level, Dir, AnyUtil), Util > AnyUtil)
+			do  delete( bid(AnyAgt,Level,Dir,AnyUtil)  )
+			+ delete( highest_bid(AnyAgt,Level,Dir,AnyUtil) ).
+		
+		
+		forall bel( bid(Agt, Level, Dir, Util), not(auction(Level, Dir)) )
+			do delete( bid(Agt, Level, Dir, Util) ).
+		
+		forall bel( hasBid(Agt, Level, Dir), not(auction(Level, Dir)) )
+			do delete( hasBid(Agt, Level, Dir) ).
+			
+		
+		% if more than one highest bids exist, delete the redundant ones and keep only one left (may receive during the same cycle)
+		if bel( auction(Level, Dir), hasSameBid(Level, Dir), bid(Agt, Level, Dir, Util), bid(OtherAgt, Level, Dir, OtherUtil), 
+					highest_bid(Agt, Level, Dir, Util), highest_bid(OtherAgt, Level, Dir, Util), OtherAgt \= Agt, OtherUtil = Util, selectAgt([Agt, OtherAgt], AnyAgt))
+			then delete( bid(AnyAgt, Level, Dir, Util) )
+			+ delete( highest_bid(AnyAgt, Level, Dir, Util) )
+			+ log(deleted).
 
+%		forall bel( auction(Level, Dir), hasSameBid(Level, Dir))
+%			do print( hasSameBid(Level, Dir) ).
+		
+		
+
+		% assign task to the agent who bid the highest
+		forall bel( highest_bid(Receiver, Level, Dir, Util), bid(Receiver, Level, Dir, Util), Util > 0, not(hasSameBid(Level, Dir)),
+				agent(Receiver), not(me(Receiver)), not(notAllBid(Level,Dir)) )
+			do (Receiver).sendonce( task(Level, Dir) )
+				+ insert( served(Level, Dir) )
+				+ delete( highest_bid(Receiver, Level, Dir, Util) )
+				+ delete( bid(Receiver, Level, Dir, Util) )
+				+ delete( sent(Receiver, task(Level, Dir)) ).
+		
+				
+		% delete hasBid information when one auction has been served
+		forall bel( served(Level, Dir), agent(Agt), not(me(Agt)) )
+			do delete( hasBid(Agt, Level, Dir) ).
+		
 
 
 		
